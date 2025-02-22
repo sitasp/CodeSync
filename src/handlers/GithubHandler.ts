@@ -201,8 +201,16 @@ export default class GithubHandler {
     }
     return uploadedFile.sha;
   }
-  async upload(path: string, fileName: string, content: string, commitMessage: string) {
-    const sha = await this.fileExists(path, fileName);
+  async upload(path: string, fileName: string, content: string, commitMessage: string, useDefaultSubmit: boolean) {
+    let sha;
+    if (useDefaultSubmit) {
+      sha = await this.fileExists(path, fileName);
+    }
+    else {
+      // append some random 4-5 digit uuid to filename
+      const uuid = Math.floor(10000 * Math.random());
+      fileName = `${fileName}_${uuid}`;
+    }
     //create a new file with the content
     const url = `https://api.github.com/repos/${this.username}/${this.repo}/contents/${path}/${fileName}`;
     const data = {
@@ -252,7 +260,7 @@ export default class GithubHandler {
       difficulty,
     )}<hr>${content}`;
 
-    await this.upload(path, 'README.md', mdContent, message);
+    await this.upload(path, 'README.md', mdContent, message, true);
   }
   async createNotesFile(path: string, notes: string, message: string, questionTitle: string) {
     //check if that file already exists
@@ -260,7 +268,7 @@ export default class GithubHandler {
     //if it doesn't, create a new file with the content
     const mdContent = `<h2>${questionTitle} Notes</h2><hr>${notes}`;
 
-    await this.upload(path, 'Notes.md', mdContent, message);
+    await this.upload(path, 'Notes.md', mdContent, message, true);
   }
   async createSolutionFile(
     path: string,
@@ -275,6 +283,7 @@ export default class GithubHandler {
       runtimeDisplay: string;
       runtimePercentile: number;
     },
+    useDefaultSubmit: boolean,
   ) {
     //check if that file already exists
     //if it does, Update the file with the new content
@@ -282,11 +291,12 @@ export default class GithubHandler {
     const msg = `Time: ${stats.runtimeDisplay} (${stats.runtimePercentile.toFixed(2)}%) | Memory: ${
       stats.memoryDisplay
     } (${stats.memoryPercentile.toFixed(2)}%) - LeetSync`;
-    await this.upload(path, `${problemName}${lang}`, code, msg);
+    await this.upload(path, `${problemName}${lang}`, code, msg, useDefaultSubmit);
   }
 
   async submit(
     submission: Submission, //todo: define the submission type
+    useDefaultSubmit: boolean,
   ): Promise<boolean> {
     if (!this.accessToken || !this.username || !this.repo) return false;
     const {
@@ -336,7 +346,7 @@ export default class GithubHandler {
       runtime,
       runtimeDisplay,
       runtimePercentile,
-    });
+    }, useDefaultSubmit);
 
     const todayTimestamp = Date.now();
 
