@@ -2,7 +2,6 @@
 
 import { LeetCodeHandler, GithubHandler } from '../handlers';
 import { Submission } from '../types/Submission';
-import { sleep } from '../utils';
 
 const leetcode = new LeetCodeHandler();
 const github = new GithubHandler();
@@ -17,7 +16,7 @@ chrome.runtime.onMessage.addListener(async function (request, _s, _sendResponse)
     let submission = await leetcode.getSubmission(questionSlug);
     while (!submission && retries < 3) {
       retries++;
-      await sleep(retries * 1000);
+      await new Promise(resolve => setTimeout(resolve, retries * 1000));
       submission = await leetcode.getSubmission(questionSlug);
     }
     if (!submission) return;
