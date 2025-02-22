@@ -29,6 +29,11 @@
       "matches": ["https://leetcode.com/problems/*"],
       "js": ["static/scripts/leetcode.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://leetcode.com/problems/*"],
+      "js": ["src/scripts/content.ts"],
+      "run_at": "document_end"
     }
   ]
 }
