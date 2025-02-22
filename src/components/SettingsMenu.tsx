@@ -1,10 +1,12 @@
 import {
   Avatar,
   Badge,
+  Box,
   Button,
   ButtonGroup,
   Code,
   Divider,
+  Flex,
   FormControl,
   FormErrorMessage,
   FormHelperText,
@@ -25,6 +27,7 @@ import {
   PopoverFooter,
   PopoverHeader,
   PopoverTrigger,
+  Switch,
   Tag,
   Text,
   Tooltip,
@@ -49,6 +52,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = () => {
   const [accessToken, setAccessToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [enableVersioning, setEnableVersioning] = useState(false);
 
   const unlinkRepo = async () => {
     chrome.storage.sync.set(
@@ -118,13 +122,14 @@ const SettingsMenu: React.FC<SettingsMenuProps> = () => {
 
   useEffect(() => {
     chrome.storage.sync.get(
-      ['github_username', 'github_leetsync_repo', 'github_leetsync_token', 'github_leetsync_subdirectory'],
+      ['github_username', 'github_leetsync_repo', 'github_leetsync_token', 'github_leetsync_subdirectory', 'github_leetsync_versioning'],
       (result) => {
-        const { github_username, github_leetsync_repo, github_leetsync_token, github_leetsync_subdirectory } = result;
+        const { github_username, github_leetsync_repo, github_leetsync_token, github_leetsync_subdirectory, github_leetsync_versioning } = result;
         setGithubUsername(github_username);
         setGithubRepo(github_leetsync_repo);
         setAccessToken(github_leetsync_token);
         setSubdirectoryValue(github_leetsync_subdirectory);
+        setEnableVersioning(github_leetsync_versioning);
       },
     );
   }, []);
@@ -263,6 +268,33 @@ const SettingsMenu: React.FC<SettingsMenuProps> = () => {
             <Badge size="sm" fontSize={'xs'} colorScheme="gray">
               Soon 🤩
             </Badge>
+          </MenuItem>
+        </MenuGroup>
+        <Divider />
+        <MenuGroup title="Versioning Settings" ml={3} mb={2}>
+          <MenuItem 
+            as={Flex} 
+            justifyContent="space-between" 
+            alignItems="center"
+            onClick={(e) => {
+              e.preventDefault();
+              const newValue = !enableVersioning;
+              chrome.storage.sync.set({ github_leetsync_versioning: newValue });
+              setEnableVersioning(newValue);
+            }}
+          >
+            <Box>
+              <Text fontWeight="medium">Solution Versioning</Text>
+              <Text fontSize="sm" color="gray.500">
+                Create new files for each submission
+              </Text>
+            </Box>
+            <Switch
+              isChecked={enableVersioning}
+              pointerEvents="none" // Prevent switch from capturing clicks
+              ml={4}
+              colorScheme="blue"
+            />
           </MenuItem>
         </MenuGroup>
         <Divider />
