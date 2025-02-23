@@ -1,6 +1,7 @@
 import { GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, GITHUB_REDIRECT_URI } from '../constants';
 import { QuestionDifficulty } from '../types/Question';
 import { Submission } from '../types/Submission';
+import { GithubAuthFactory, IGithubAuthStrategy } from '../auth/GithubAuth';
 
 type DistributionType = {
   percentile: string;
@@ -42,6 +43,7 @@ const languagesToExtensions: Record<string, string> = {
   Dart: '.dart',
   Elixir: '.ex',
 };
+
 interface GithubUser {
   id: number;
   avatar_url?: string | null;
@@ -49,38 +51,55 @@ interface GithubUser {
   login: string;
   /* other user data can be added here, but not needed for now */
 }
+
 export default class GithubHandler {
-  base_url: string = 'https://api.github.com';
-  private client_secret: string | null = GITHUB_CLIENT_SECRET ?? '';
-  private client_id: string | null = GITHUB_CLIENT_ID ?? '';
-  private redirect_uri: string | null = GITHUB_REDIRECT_URI ?? '';
-  private accessToken: string;
-  private username: string;
-  private repo: string;
-  private github_leetsync_subdirectory: string;
+  private accessToken: string | null = null;
+  private username: string | null = null;
+  private repo: string | null = null;
+  private github_leetsync_subdirectory: string = '';
+  private authStrategy: IGithubAuthStrategy;
 
   constructor() {
-    //inject QuestionHandler dependency
+    // Default to OAuth strategy
+    this.authStrategy = GithubAuthFactory.createAuthStrategy('oauth');
+    
     //fetch github_access_token, github_username, github_leetsync_repo from storage
     //if any of them is not present, throw an error
-    this.accessToken = '';
-    this.username = '';
-    this.repo = '';
-    this.github_leetsync_subdirectory = '';
-
     chrome.storage.sync.get(
       ['github_leetsync_token', 'github_username', 'github_leetsync_repo', 'github_leetsync_subdirectory'],
       (result) => {
-        if (!result.github_leetsync_token || !result.github_username || !result.github_leetsync_repo) {
+        if (result.github_leetsync_token) {
+          this.accessToken = result.github_leetsync_token;
+          this.username = result.github_username;
+          this.repo = result.github_leetsync_repo;
+          this.github_leetsync_subdirectory = result.github_leetsync_subdirectory || '';
+        }
+        else{
           console.log('❌ GithubHandler: Missing Github Credentials');
         }
-        this.accessToken = result['github_leetsync_token'];
-        this.username = result['github_username'];
-        this.repo = result['github_leetsync_repo'];
-        this.github_leetsync_subdirectory = result['github_leetsync_subdirectory'];
       },
     );
   }
+
+  setAuthStrategy(type: 'oauth' | 'personal_token') {
+    this.authStrategy = GithubAuthFactory.createAuthStrategy(type);
+  }
+
+  async fetchToken(params: { code?: string; personalToken?: string }): Promise<string> {
+    try {
+      const token = await this.authStrategy.fetchToken(params);
+      this.accessToken = token;
+      return token;
+    } catch (error) {
+      console.error('Error fetching token:', error);
+      throw error;
+    }
+  }
+
+  async validateToken(token: string): Promise<boolean> {
+    return this.authStrategy.validateToken(token);
+  }
+
   async loadTokenFromStorage(): Promise<string> {
     return new Promise((resolve, reject) => {
       chrome.storage.sync.get(['github_leetsync_token'], (result) => {
@@ -94,17 +113,19 @@ export default class GithubHandler {
       });
     });
   }
+
   async authorize(code: string): Promise<string | null> {
-    const access_token = await this.fetchAccessToken(code);
+    const access_token = await this.fetchToken({ code });
     const user = await this.fetchGithubUser(access_token);
     if (!access_token || !user) return null;
     this.accessToken = access_token;
     this.username = user.login;
     return access_token;
   }
+
   async fetchGithubUser(token: string): Promise<GithubUser | null> {
     //validate the token
-    const response = await fetch(`${this.base_url}/user`, {
+    const response = await fetch(`https://api.github.com/user`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -126,43 +147,12 @@ export default class GithubHandler {
     });
     return response;
   }
-  async fetchAccessToken(code: string) {
-    const token = await this.loadTokenFromStorage();
 
-    if (token) return token;
-
-    const tokenUrl = 'https://github.com/login/oauth/access_token';
-    const body = {
-      code,
-      client_id: this.client_id,
-      redirect_uri: this.redirect_uri,
-      client_secret: this.client_secret,
-    };
-    const response = await fetch(tokenUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify(body),
-    }).then((response) => response.json());
-
-    if (!response || response.message === 'Bad credentials') {
-      console.log('No access token found.');
-      chrome.storage.sync.clear();
-      return;
-    }
-
-    chrome.storage.sync.set({ github_leetsync_token: response.access_token }, () => {
-      console.log('Saved github access token.');
-    });
-    return response.access_token;
-  }
   async checkIfRepoExists(repo_name: string): Promise<boolean> {
     const trimmedRepoName = repo_name.replace('.git', '').trim();
     if (!trimmedRepoName) return false;
     //check if repo exists in github user's account
-    const result = await fetch(`${this.base_url}/repos/${trimmedRepoName}`, {
+    const result = await fetch(`https://api.github.com/repos/${trimmedRepoName}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -177,6 +167,7 @@ export default class GithubHandler {
     }
     return true;
   }
+
   public getProblemExtension(lang: string) {
     return languagesToExtensions[lang];
   }
@@ -201,12 +192,12 @@ export default class GithubHandler {
     }
     return uploadedFile.sha;
   }
+
   async upload(path: string, fileName: string, content: string, commitMessage: string, useDefaultSubmit: boolean) {
     let sha;
     if (useDefaultSubmit) {
       sha = await this.fileExists(path, fileName);
-    }
-    else {
+    } else {
       // append some random 4-5 digit uuid to filename
       const uuid = Math.floor(10000 * Math.random());
       fileName = `${uuid}_${fileName}`;
@@ -230,6 +221,7 @@ export default class GithubHandler {
       .then((x) => x.json())
       .catch((err) => console.log(err));
   }
+
   getDifficultyColor(difficulty: QuestionDifficulty) {
     switch (difficulty) {
       case 'Easy':
@@ -240,11 +232,13 @@ export default class GithubHandler {
         return 'red';
     }
   }
+
   createDifficultyBadge(difficulty: QuestionDifficulty) {
     return `<img src='https://img.shields.io/badge/Difficulty-${difficulty}-${this.getDifficultyColor(
       difficulty,
     )}' alt='Difficulty: ${difficulty}' />`;
   }
+
   async createReadmeFile(
     path: string,
     content: string,
@@ -262,6 +256,7 @@ export default class GithubHandler {
 
     await this.upload(path, 'README.md', mdContent, message, true);
   }
+
   async createNotesFile(path: string, notes: string, message: string, questionTitle: string) {
     //check if that file already exists
     //if it does, Update the file with the new content
@@ -270,6 +265,7 @@ export default class GithubHandler {
 
     await this.upload(path, 'Notes.md', mdContent, message, true);
   }
+
   async createSolutionFile(
     path: string,
     code: string,

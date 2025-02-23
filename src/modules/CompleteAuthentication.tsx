@@ -20,8 +20,14 @@ import { Footer } from './Footer';
 
 const AuthorizeWithGtihub = ({ nextStep }: { nextStep: Function }) => {
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [personalToken, setPersonalToken] = useState('');
+  const [isPersonalTokenMode, setIsPersonalTokenMode] = useState(false);
+  const [isTokenError, setIsTokenError] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
+  const github = new GithubHandler();
 
   const handleClicked = () => {
+    github.setAuthStrategy('oauth');
     const authUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${GITHUB_REDIRECT_URI}&scope=repo`;
 
     chrome.tabs.create({ url: authUrl, active: true }, function (x) {
@@ -31,6 +37,29 @@ const AuthorizeWithGtihub = ({ nextStep }: { nextStep: Function }) => {
       });
     });
   };
+
+  const validateAndSavePersonalToken = async () => {
+    setIsValidating(true);
+    setIsTokenError(false);
+
+    try {
+      github.setAuthStrategy('personal_token');
+      const token = await github.fetchToken({ personalToken });
+      
+      // Save the token
+      chrome.storage.sync.set({ 
+        github_leetsync_token: token,
+        github_auth_type: 'personal_token'  // Save the auth type
+      }, () => {
+        setAccessToken(token);
+      });
+    } catch (error) {
+      setIsTokenError(true);
+    }
+
+    setIsValidating(false);
+  };
+
   useEffect(() => {
     if (accessToken && accessToken.length > 0) {
       nextStep();
@@ -38,39 +67,87 @@ const AuthorizeWithGtihub = ({ nextStep }: { nextStep: Function }) => {
   }, [accessToken]);
 
   useEffect(() => {
-    chrome.storage.sync.get(['github_leetsync_token'], (result) => {
+    chrome.storage.sync.get(['github_leetsync_token', 'github_auth_type'], (result) => {
       if (result.github_leetsync_token) {
         setAccessToken(result.github_leetsync_token);
+        // Set the correct auth strategy based on stored type
+        if (result.github_auth_type) {
+          github.setAuthStrategy(result.github_auth_type as 'oauth' | 'personal_token');
+        }
       }
     });
   }, []);
 
   return (
-    <VStack w='100%'>
+    <VStack w='100%' spacing={4}>
       <VStack pb={4}>
         <Heading size='md'>Authorize with GitHub</Heading>
-        <Text color='GrayText' fontSize={'sm'} w='95%' textAlign={'center'}>
-          Before we can push code to your selected repository, we need access to
-          your GitHub account. <br />
+        <Text fontSize='sm' color='gray.500' textAlign='center'>
+          Choose how you want to authorize with GitHub
         </Text>
       </VStack>
-      <Button
-        colorScheme={'blackAlpha'}
-        bg='blackAlpha.800'
-        w='95%'
-        leftIcon={<BsGithub />}
-        color='whiteAlpha.900'
-        border={'1px solid'}
-        borderColor={'gray.200'}
-        _hover={{ bg: 'blackAlpha.700' }}
-        onClick={handleClicked}
-      >
-        Login with GitHub
-      </Button>
-      <small>You can revoke access at any time.</small>
+
+      {!isPersonalTokenMode ? (
+        <>
+          <Button
+            leftIcon={<BsGithub />}
+            colorScheme='gray'
+            variant='solid'
+            width='100%'
+            onClick={handleClicked}
+          >
+            Authorize with GitHub
+          </Button>
+          <Text fontSize='sm' color='gray.500'>
+            or
+          </Text>
+          <Button
+            variant='link'
+            color='blue.500'
+            onClick={() => setIsPersonalTokenMode(true)}
+          >
+            Use Personal Access Token
+          </Button>
+        </>
+      ) : (
+        <>
+          <FormControl isInvalid={isTokenError}>
+            <InputGroup>
+              <Input
+                placeholder="Enter Personal Access Token"
+                value={personalToken}
+                onChange={(e) => setPersonalToken(e.target.value)}
+                type="password"
+              />
+            </InputGroup>
+            {isTokenError && (
+              <FormErrorMessage>Invalid personal access token</FormErrorMessage>
+            )}
+            <FormHelperText>
+              Token needs 'repo' scope. Create one at GitHub Settings → Developer Settings → Personal Access Tokens
+            </FormHelperText>
+          </FormControl>
+          <Button
+            colorScheme="blue"
+            width="100%"
+            onClick={validateAndSavePersonalToken}
+            isLoading={isValidating}
+          >
+            Validate & Continue
+          </Button>
+          <Button
+            variant="link"
+            color="gray.500"
+            onClick={() => setIsPersonalTokenMode(false)}
+          >
+            Back to GitHub OAuth
+          </Button>
+        </>
+      )}
     </VStack>
   );
 };
+
 const AuthorizeWithLeetCode = ({ nextStep }: { nextStep: Function }) => {
   const [leetcodeSession, setLeetcodeSession] = useState<string | null>(null);
 
@@ -120,6 +197,7 @@ const AuthorizeWithLeetCode = ({ nextStep }: { nextStep: Function }) => {
     </VStack>
   );
 };
+
 const SelectRepositoryStep = ({ nextStep }: { nextStep: Function }) => {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [repositoryURL, setRepositoryURL] = useState<string>('');
