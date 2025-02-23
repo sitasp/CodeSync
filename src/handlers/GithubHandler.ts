@@ -209,7 +209,7 @@ export default class GithubHandler {
     else {
       // append some random 4-5 digit uuid to filename
       const uuid = Math.floor(10000 * Math.random());
-      fileName = `${fileName}_${uuid}`;
+      fileName = `${uuid}_${fileName}`;
     }
     //create a new file with the content
     const url = `https://api.github.com/repos/${this.username}/${this.repo}/contents/${path}/${fileName}`;
