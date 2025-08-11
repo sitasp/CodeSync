@@ -15,7 +15,7 @@
     "512": "logo512.png"
   },
   "permissions": ["tabs", "storage", "cookies", "unlimitedStorage", "webRequest"],
-  "host_permissions": ["https://leetcode.com/*"],
+  "host_permissions": ["https://leetcode.com/*", "https://www.hackerrank.com/*"],
   "background": {
     "service_worker": "static/scripts/background.js"
   },
@@ -28,6 +28,11 @@
     {
       "matches": ["https://leetcode.com/problems/*"],
       "js": ["static/scripts/leetcode.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.hackerrank.com/challenges/*"],
+      "js": ["static/scripts/hackerrank.js"],
       "run_at": "document_idle"
     }
   ]

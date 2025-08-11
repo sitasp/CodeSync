@@ -18,6 +18,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   /* Will be used if we want to get messages from content scripts to background script */
   sendResponse({ status: 'OK' });
 });
+// LeetCode cookie management
 chrome.cookies.get({ name: 'LEETCODE_SESSION', url: 'https://leetcode.com/' }, function (cookie) {
   if (!cookie) return;
   chrome.storage.sync.set({ leetcode_session: cookie.value }, () => {
@@ -25,13 +26,41 @@ chrome.cookies.get({ name: 'LEETCODE_SESSION', url: 'https://leetcode.com/' }, f
   });
 });
 
+// HackerRank cookie management
+chrome.cookies.get({ name: '_hrank_session', url: 'https://www.hackerrank.com/' }, function (cookie) {
+  if (!cookie) return;
+  chrome.storage.sync.set({ hackerrank_session: cookie.value }, () => {
+    console.log(`HackerRank Session Synced Successfully`);
+  });
+});
+
+chrome.cookies.get({ name: 'remember_hacker_token', url: 'https://www.hackerrank.com/' }, function (cookie) {
+  if (!cookie) return;
+  chrome.storage.sync.set({ hackerrank_token: cookie.value }, () => {
+    console.log(`HackerRank Token Synced Successfully`);
+  });
+});
+
 chrome.cookies.onChanged.addListener(function (info) {
   const { cookie } = info;
-  //get LEETCODE_SESSION cookie
+  
+  // LeetCode session cookie
   if (cookie.name === 'LEETCODE_SESSION') {
-    //save cookie value to local storage
     chrome.storage.sync.set({ leetcode_session: cookie?.value || null }, () => {
       console.log(`Leetcode Re-Synced Successfully`);
+    });
+  }
+  
+  // HackerRank session cookies
+  if (cookie.name === '_hrank_session') {
+    chrome.storage.sync.set({ hackerrank_session: cookie?.value || null }, () => {
+      console.log(`HackerRank Session Re-Synced Successfully`);
+    });
+  }
+  
+  if (cookie.name === 'remember_hacker_token') {
+    chrome.storage.sync.set({ hackerrank_token: cookie?.value || null }, () => {
+      console.log(`HackerRank Token Re-Synced Successfully`);
     });
   }
 });
@@ -53,7 +82,7 @@ export const sendMessageToContentScript = (type: string, data: any) => {
   });
 };
 
-// Listen for submit request
+// Listen for LeetCode submit request
 chrome.webRequest.onCompleted.addListener(
   (details: chrome.webRequest.WebResponseCacheDetails) => {
     // Check if it's a POST request to submit the code
@@ -73,6 +102,30 @@ chrome.webRequest.onCompleted.addListener(
   },
   {
     urls: ['https://leetcode.com/problems/*/submit/'],
+    types: ['xmlhttprequest'],
+  },
+);
+
+// Listen for HackerRank submit request
+chrome.webRequest.onCompleted.addListener(
+  (details: chrome.webRequest.WebResponseCacheDetails) => {
+    // Check if it's a POST request to submit the code
+    if (
+      details.method === 'POST' &&
+      details.url.includes('/rest/contests/master/challenges/') &&
+      details.url.includes('/submissions')
+    ) {
+      const challengeSlug = details.url.match(/\/challenges\/(.*?)\/submissions/)?.[1] ?? null;
+      if (!challengeSlug) return;
+      console.log('🎯 HackerRank submission detected:', challengeSlug);
+      // Wait 7 secs to complete the checks (HackerRank might need more time)
+      setTimeout(() => {
+        sendMessageToContentScript('get-hackerrank-submission', { challengeSlug });
+      }, 7000);
+    }
+  },
+  {
+    urls: ['https://www.hackerrank.com/rest/contests/master/challenges/*/submissions'],
     types: ['xmlhttprequest'],
   },
 );

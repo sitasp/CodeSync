@@ -10,6 +10,7 @@ module.exports = {
             paths.appIndexJs,
           ].filter(Boolean),
           leetcode: './src/scripts/leetcode.ts',
+          hackerrank: './src/scripts/hackerrank.ts',
           background: './src/background.ts',
           'authorize-github': './src/scripts/authorize-github.ts',
         },
