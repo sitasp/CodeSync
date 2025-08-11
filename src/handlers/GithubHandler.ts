@@ -58,6 +58,10 @@ export default class GithubHandler {
   private username: string;
   private repo: string;
   private github_leetsync_subdirectory: string;
+  private provider_settings: {
+    leetcode?: { enabled: boolean; subdirectory: string };
+    hackerrank?: { enabled: boolean; subdirectory: string };
+  } = {};
 
   constructor() {
     //inject QuestionHandler dependency
@@ -69,7 +73,7 @@ export default class GithubHandler {
     this.github_leetsync_subdirectory = '';
 
     chrome.storage.sync.get(
-      ['github_leetsync_token', 'github_username', 'github_leetsync_repo', 'github_leetsync_subdirectory'],
+      ['github_leetsync_token', 'github_username', 'github_leetsync_repo', 'github_leetsync_subdirectory', 'provider_settings'],
       (result) => {
         if (!result.github_leetsync_token || !result.github_username || !result.github_leetsync_repo) {
           console.log('❌ GithubHandler: Missing Github Credentials');
@@ -78,6 +82,7 @@ export default class GithubHandler {
         this.username = result['github_username'];
         this.repo = result['github_leetsync_repo'];
         this.github_leetsync_subdirectory = result['github_leetsync_subdirectory'];
+        this.provider_settings = result['provider_settings'] || {};
       },
     );
   }
@@ -179,6 +184,21 @@ export default class GithubHandler {
   }
   public getProblemExtension(lang: string) {
     return languagesToExtensions[lang];
+  }
+
+  private getProviderSubdirectory(provider: 'leetcode' | 'hackerrank'): string {
+    // If provider settings exist, use those
+    if (this.provider_settings && this.provider_settings[provider]) {
+      return this.provider_settings[provider]!.subdirectory;
+    }
+
+    // Fallback: For leetcode, use old subdirectory setting if available
+    if (provider === 'leetcode' && this.github_leetsync_subdirectory) {
+      return this.github_leetsync_subdirectory;
+    }
+
+    // Default: Use provider name
+    return provider;
   }
 
   /* Submissions Methods */
@@ -284,19 +304,22 @@ export default class GithubHandler {
       runtimePercentile: number;
     },
     useDefaultSubmit: boolean,
+    provider: 'leetcode' | 'hackerrank' = 'leetcode',
   ) {
     //check if that file already exists
     //if it does, Update the file with the new content
     //if it doesn't, create a new file with the content
+    const platformName = provider === 'leetcode' ? 'LeetCode' : 'HackerRank';
     const msg = `Time: ${stats.runtimeDisplay} (${stats.runtimePercentile.toFixed(2)}%) | Memory: ${
       stats.memoryDisplay
-    } (${stats.memoryPercentile.toFixed(2)}%) - LeetSync`;
+    } (${stats.memoryPercentile.toFixed(2)}%) - ${platformName} via LeetSync`;
     await this.upload(path, `${problemName}${lang}`, code, msg, useDefaultSubmit);
   }
 
   async submit(
     submission: Submission, //todo: define the submission type
     useDefaultSubmit: boolean,
+    provider: 'leetcode' | 'hackerrank' = 'leetcode',
   ): Promise<boolean> {
     if (!this.accessToken || !this.username || !this.repo) return false;
     const {
@@ -322,8 +345,10 @@ export default class GithubHandler {
     //create a path for the files to be uploaded
     let basePath = `${question.questionFrontendId ?? question.questionId ?? 'unknown'}-${question.titleSlug}`;
 
-    if (this.github_leetsync_subdirectory) {
-      basePath = `${this.github_leetsync_subdirectory}/${basePath}`;
+    // Use provider-specific subdirectory
+    const providerSubdirectory = this.getProviderSubdirectory(provider);
+    if (providerSubdirectory) {
+      basePath = `${providerSubdirectory}/${basePath}`;
     }
 
     const { title, titleSlug, content, difficulty, questionId } = question;
@@ -346,7 +371,7 @@ export default class GithubHandler {
       runtime,
       runtimeDisplay,
       runtimePercentile,
-    }, useDefaultSubmit);
+    }, useDefaultSubmit, provider);
 
     const todayTimestamp = Date.now();
 

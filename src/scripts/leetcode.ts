@@ -154,6 +154,15 @@ chrome.runtime.onMessage.addListener(async function (request, _s, _sendResponse)
 
     if (!questionSlug) return;
 
+    // Check if LeetCode provider is enabled
+    const result = await chrome.storage.sync.get(['provider_settings']);
+    const providerSettings = result.provider_settings;
+
+    if (providerSettings && providerSettings.leetcode && !providerSettings.leetcode.enabled) {
+      console.log('LeetCode provider is disabled, skipping sync');
+      return;
+    }
+
     let retries = 0;
     let submission = await leetcode.getSubmission(questionSlug);
     while (!submission && retries < 3) {
@@ -188,7 +197,7 @@ chrome.runtime.onMessage.addListener(async function (request, _s, _sendResponse)
       useDefaultSubmit = false;
     }
 
-    const isPushed = await github.submit(submission, useDefaultSubmit);
+    const isPushed = await github.submit(submission, useDefaultSubmit, 'leetcode');
     if (isPushed) {
       chrome.runtime.sendMessage({ type: 'set-fire-icon' });
     }
