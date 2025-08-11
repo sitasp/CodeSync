@@ -117,10 +117,29 @@ chrome.webRequest.onCompleted.addListener(
     ) {
       const challengeSlug = details.url.match(/\/challenges\/(.*?)\/submissions/)?.[1] ?? null;
       if (!challengeSlug) return;
+      
       console.log('🎯 HackerRank submission detected:', challengeSlug);
+      console.log('🔍 Request details - Tab ID:', details.tabId, 'URL:', details.url);
+      
       // Wait 7 secs to complete the checks (HackerRank might need more time)
       setTimeout(() => {
-        sendMessageToContentScript('get-hackerrank-submission', { challengeSlug });
+        console.log('📤 Sending HackerRank message to tab:', details.tabId);
+        
+        // Send message to the specific tab that made the request
+        if (details.tabId && details.tabId !== -1) {
+          chrome.tabs.sendMessage(details.tabId, {
+            type: 'get-hackerrank-submission',
+            data: { challengeSlug }
+          }, (response) => {
+            if (chrome.runtime.lastError) {
+              console.error('❌ HackerRank message failed:', chrome.runtime.lastError.message);
+            } else {
+              console.log('✅ HackerRank message sent successfully:', response);
+            }
+          });
+        } else {
+          console.error('❌ Invalid tab ID for HackerRank message:', details.tabId);
+        }
       }, 7000);
     }
   },

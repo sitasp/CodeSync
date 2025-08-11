@@ -1,10 +1,12 @@
 export default class HackerRankHandler {
   private baseUrl: string = 'https://www.hackerrank.com';
 
-  async getSubmission(challengeSlug: string): Promise<any | null> {
+  async getSubmission(challengeSlug: string, submissionId?: string): Promise<any | null> {
     try {
+      console.log('🔍 HackerRank getSubmission called with:', { challengeSlug, submissionId });
+      
       // Get authentication cookies
-      const sessionResult = await chrome.storage.sync.get(['hackerrank_session', 'hackerrank_token']);
+      const sessionResult = await chrome.storage.sync.get(['hackerrank_session']);
       const { hackerrank_session } = sessionResult;
 
       if (!hackerrank_session) {
@@ -12,23 +14,31 @@ export default class HackerRankHandler {
         return null;
       }
 
-      // First, get all cookies to build the request
+      // Get all cookies to build the request
       const cookies = await this.getAllHackerRankCookies();
       const cookieString = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
+      console.log('🍪 HackerRank cookies prepared:', cookies.length, 'cookies');
 
-      // Get CSRF token from page or cookies
+      // Get CSRF token from page
       const csrfToken = await this.getCSRFToken();
+      console.log('🔐 CSRF token obtained:', csrfToken ? 'Yes' : 'No');
 
-      // Find the latest submission for this challenge
-      const submissionId = await this.getLatestSubmissionId(challengeSlug, cookieString, csrfToken);
+      let targetSubmissionId = submissionId;
       
-      if (!submissionId) {
-        console.log('❌ No recent submission found for challenge:', challengeSlug);
+      // If no submission ID provided, find the latest one
+      if (!targetSubmissionId) {
+        console.log('🔍 No submission ID provided, finding latest...');
+        targetSubmissionId = await this.getLatestSubmissionId(challengeSlug, cookieString, csrfToken) || undefined;
+      }
+      
+      if (!targetSubmissionId) {
+        console.log('❌ No submission ID found for challenge:', challengeSlug);
         return null;
       }
 
+      console.log('🎯 Polling submission status for ID:', targetSubmissionId);
       // Poll the submission status until completion
-      const submission = await this.pollSubmissionStatus(challengeSlug, submissionId, cookieString, csrfToken);
+      const submission = await this.pollSubmissionStatus(challengeSlug, targetSubmissionId, cookieString, csrfToken);
       
       return submission;
     } catch (error) {
@@ -129,7 +139,7 @@ export default class HackerRankHandler {
   }
 
   private async pollSubmissionStatus(challengeSlug: string, submissionId: string, cookieString: string, csrfToken: string | null): Promise<any | null> {
-    const maxRetries = 20; // 20 retries with 2-second intervals = 40 seconds max
+    const maxRetries = 15; // 15 retries with 3-second intervals = 45 seconds max
     let retries = 0;
 
     const headers: Record<string, string> = {
@@ -142,29 +152,41 @@ export default class HackerRankHandler {
       headers['X-Csrf-Token'] = csrfToken;
     }
 
+    console.log('🔄 Starting HackerRank submission polling...', { challengeSlug, submissionId, maxRetries });
+
     while (retries < maxRetries) {
       try {
         const url = `${this.baseUrl}/rest/contests/master/challenges/${challengeSlug}/submissions/${submissionId}`;
+        console.log(`🔄 Poll attempt ${retries + 1}/${maxRetries}: ${url}`);
         
         const response = await fetch(url, {
           method: 'GET',
           headers
         });
 
+        console.log('🔍 Response status:', response.status, response.statusText);
+
         if (!response.ok) {
-          console.log(`❌ Failed to get submission status: ${response.status}`);
-          return null;
+          console.log(`❌ Failed to get submission status: ${response.status} ${response.statusText}`);
+          if (response.status === 403 || response.status === 401) {
+            console.log('❌ Authentication failed, stopping polling');
+            return null;
+          }
+          // Continue polling for other errors
+          retries++;
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          continue;
         }
 
         const data = await response.json();
         const submission = data.model;
 
         if (!submission) {
-          console.log('❌ No submission data found');
+          console.log('❌ No submission data found in response');
           return null;
         }
 
-        console.log(`🔄 HackerRank submission status: ${submission.status} (${submission.status_code})`);
+        console.log(`🔄 HackerRank submission status: ${submission.status} (code: ${submission.status_code})`);
 
         // Check if submission is complete
         if (submission.status !== 'Processing' && submission.status_code !== 3) {
@@ -173,22 +195,23 @@ export default class HackerRankHandler {
             console.log('✅ HackerRank submission accepted!');
             return this.formatSubmissionData(submission, challengeSlug);
           } else {
-            console.log(`❌ HackerRank submission failed: ${submission.status}`);
+            console.log(`❌ HackerRank submission failed: ${submission.status} (code: ${submission.status_code})`);
             return null;
           }
         }
 
-        // Wait 2 seconds before next poll
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Wait 3 seconds before next poll
+        console.log('⏳ Waiting 3 seconds before next poll...');
+        await new Promise(resolve => setTimeout(resolve, 3000));
         retries++;
       } catch (error) {
         console.error('❌ Error polling submission status:', error);
         retries++;
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
     }
 
-    console.log('❌ Submission polling timed out');
+    console.log('❌ HackerRank submission polling timed out after', maxRetries, 'attempts');
     return null;
   }
 

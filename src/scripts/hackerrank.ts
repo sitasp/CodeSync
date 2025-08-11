@@ -3,6 +3,16 @@
 import { GithubHandler } from '../handlers';
 import HackerRankHandler from '../handlers/HackerRankHandler';
 
+// Debug logging
+console.log('🚀 HackerRank content script loaded on:', window.location.href);
+console.log('🔍 Extension runtime ID:', chrome.runtime.id);
+console.log('⏰ Script load time:', new Date().toISOString());
+
+// Keep-alive heartbeat to verify script stays loaded
+setInterval(() => {
+  console.log('❤️ HackerRank content script alive at:', new Date().toLocaleTimeString());
+}, 30000); // Every 30 seconds
+
 const hackerrank = new HackerRankHandler();
 const github = new GithubHandler();
 
@@ -150,7 +160,10 @@ function funcCreateNew() {
 }
 
 chrome.runtime.onMessage.addListener(async function (request, _s, _sendResponse) {
+  console.log('📨 HackerRank content script received message:', request);
+  
   if (request && request.type === 'get-hackerrank-submission') {
+    console.log('✅ Processing HackerRank submission request for:', request.data?.challengeSlug);
     const challengeSlug = request?.data?.challengeSlug;
 
     if (!challengeSlug) return;
