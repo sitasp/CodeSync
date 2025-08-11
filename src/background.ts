@@ -127,14 +127,44 @@ chrome.webRequest.onCompleted.addListener(
         
         // Send message to the specific tab that made the request
         if (details.tabId && details.tabId !== -1) {
+          // Set up a timeout for the message
+          const timeoutId = setTimeout(() => {
+            console.warn('⚠️ HackerRank message timeout - content script may be slow');
+          }, 30000); // 30 second timeout warning
+
           chrome.tabs.sendMessage(details.tabId, {
             type: 'get-hackerrank-submission',
             data: { challengeSlug }
           }, (response) => {
+            clearTimeout(timeoutId);
+            
             if (chrome.runtime.lastError) {
               console.error('❌ HackerRank message failed:', chrome.runtime.lastError.message);
+              
+              // Retry once if the message failed
+              const errorMessage = chrome.runtime.lastError.message || '';
+              if (errorMessage.includes('port closed') || 
+                  errorMessage.includes('Receiving end does not exist')) {
+                console.log('🔄 Retrying HackerRank message after 2 seconds...');
+                setTimeout(() => {
+                  chrome.tabs.sendMessage(details.tabId, {
+                    type: 'get-hackerrank-submission',
+                    data: { challengeSlug }
+                  }, (retryResponse) => {
+                    if (chrome.runtime.lastError) {
+                      console.error('❌ HackerRank retry message also failed:', chrome.runtime.lastError.message);
+                    } else {
+                      console.log('✅ HackerRank retry message succeeded:', retryResponse);
+                    }
+                  });
+                }, 2000);
+              }
             } else {
-              console.log('✅ HackerRank message sent successfully:', response);
+              if (response?.success) {
+                console.log('✅ HackerRank message processed successfully:', response);
+              } else {
+                console.log('⚠️ HackerRank message processed but with issues:', response);
+              }
             }
           });
         } else {

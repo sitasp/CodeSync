@@ -90,6 +90,7 @@ export default class HackerRankHandler {
   private async getLatestSubmissionId(challengeSlug: string, cookieString: string, csrfToken: string | null): Promise<string | null> {
     try {
       const url = `${this.baseUrl}/rest/contests/master/challenges/${challengeSlug}/submissions`;
+      console.log('🔍 Fetching submissions from:', url);
       
       const headers: Record<string, string> = {
         'Accept': 'application/json',
@@ -99,31 +100,75 @@ export default class HackerRankHandler {
 
       if (csrfToken) {
         headers['X-Csrf-Token'] = csrfToken;
+        console.log('🔐 Using CSRF token:', csrfToken.substring(0, 10) + '...');
+      } else {
+        console.log('⚠️ No CSRF token available');
       }
+
+      console.log('🍪 Cookie string length:', cookieString.length);
 
       const response = await fetch(url, {
         method: 'GET',
         headers
       });
 
+      console.log('🔍 Submissions API response:', response.status, response.statusText);
+
       if (!response.ok) {
-        console.log('❌ Failed to get submissions:', response.status);
+        const responseText = await response.text();
+        console.log('❌ Failed to get submissions:', response.status, 'Response:', responseText);
         return null;
       }
 
       const data = await response.json();
+      console.log('📊 Submissions data structure:', {
+        hasModels: !!data.models,
+        modelsCount: data.models?.length || 0,
+        dataKeys: Object.keys(data)
+      });
+      
+      if (data.models && data.models.length > 0) {
+        console.log('📅 First few submissions timestamps:', data.models.slice(0, 3).map((s: any) => ({
+          id: s.id,
+          created_at: s.created_at,
+          status: s.status,
+          language: s.language
+        })));
+      }
       
       // Find the most recent submission (within last 2 minutes)
       const now = Date.now();
       const recentSubmissions = data.models?.filter((submission: any) => {
         const submissionTime = new Date(submission.created_at).getTime();
         const timeDiff = now - submissionTime;
-        return timeDiff < 2 * 60 * 1000; // 2 minutes
+        const withinTimeFrame = timeDiff < 2 * 60 * 1000; // 2 minutes
+        console.log(`⏰ Submission ${submission.id}: ${submission.created_at}, time diff: ${Math.round(timeDiff/1000)}s, recent: ${withinTimeFrame}`);
+        return withinTimeFrame;
       }) || [];
 
       if (recentSubmissions.length === 0) {
-        console.log('❌ No recent submissions found');
-        return null;
+        console.log('❌ No recent submissions found within 2 minutes');
+        console.log('💡 Extending search to last 5 minutes...');
+        
+        // Fallback: try last 5 minutes
+        const extendedRecentSubmissions = data.models?.filter((submission: any) => {
+          const submissionTime = new Date(submission.created_at).getTime();
+          const timeDiff = now - submissionTime;
+          return timeDiff < 5 * 60 * 1000; // 5 minutes
+        }) || [];
+        
+        if (extendedRecentSubmissions.length === 0) {
+          console.log('❌ No submissions found even in last 5 minutes');
+          return null;
+        }
+        
+        console.log(`✅ Found ${extendedRecentSubmissions.length} submissions in last 5 minutes`);
+        const latestSubmission = extendedRecentSubmissions.sort((a: any, b: any) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )[0];
+        
+        console.log('🎯 Using latest submission from extended search:', latestSubmission.id);
+        return latestSubmission.id?.toString() || null;
       }
 
       // Get the latest submission
@@ -131,6 +176,7 @@ export default class HackerRankHandler {
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )[0];
 
+      console.log('🎯 Found latest recent submission:', latestSubmission.id, 'at', latestSubmission.created_at);
       return latestSubmission.id?.toString() || null;
     } catch (error) {
       console.error('❌ Error getting latest submission ID:', error);
