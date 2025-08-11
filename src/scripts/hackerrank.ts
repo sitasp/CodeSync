@@ -159,94 +159,61 @@ function funcCreateNew() {
   console.log('Creating new HackerRank submission');
 }
 
-chrome.runtime.onMessage.addListener(function (request, _sender, sendResponse) {
-  console.log('📨 HackerRank content script received message:', request);
+// Listen for intercepted HackerRank submissions
+window.addEventListener('hackerrank-submission-accepted', async (event: Event) => {
+  const customEvent = event as CustomEvent;
+  console.log('🎉 Received HackerRank submission accepted event:', customEvent.detail);
   
-  if (request && request.type === 'get-hackerrank-submission') {
-    console.log('✅ Processing HackerRank submission request for:', request.data?.challengeSlug);
-    const challengeSlug = request?.data?.challengeSlug;
-
-    if (!challengeSlug) {
-      sendResponse({ success: false, error: 'No challenge slug provided' });
+  const { challengeSlug, submissionData } = customEvent.detail;
+  
+  try {
+    // Check if HackerRank provider is enabled
+    const result = await chrome.storage.sync.get(['provider_settings']);
+    const providerSettings = result.provider_settings;
+    
+    if (providerSettings && providerSettings.hackerrank && !providerSettings.hackerrank.enabled) {
+      console.log('HackerRank provider is disabled, skipping sync');
       return;
     }
 
-    // Handle async operations and send response when done
-    (async () => {
-      try {
-        // Check if HackerRank provider is enabled
-        const result = await chrome.storage.sync.get(['provider_settings']);
-        const providerSettings = result.provider_settings;
-        
-        if (providerSettings && providerSettings.hackerrank && !providerSettings.hackerrank.enabled) {
-          console.log('HackerRank provider is disabled, skipping sync');
-          sendResponse({ success: false, error: 'HackerRank provider is disabled' });
-          return;
-        }
+    console.log("✅ Processing intercepted HackerRank submission:");
+    console.log(submissionData);
 
-        let retries = 0;
-        let submission = await hackerrank.getSubmission(challengeSlug);
-        while (!submission && retries < 3) {
-          retries++;
-          await sleep(retries * 2000); // Longer delays for HackerRank
-          submission = await hackerrank.getSubmission(challengeSlug);
-        }
-        
-        if (!submission) {
-          console.log('❌ Failed to get HackerRank submission after retries');
-          sendResponse({ success: false, error: 'Failed to get submission after retries' });
-          return;
-        }
+    // Convert the intercepted submission data to our format
+    const submission = hackerrank.formatSubmissionFromInterceptedData(submissionData, challengeSlug);
+    
+    // Show popup for user choice
+    const userChoice = await showPopup();
+    let useDefaultSubmit: boolean = false;
 
-        // Validate submission's timestamp, if it was submitted more than 2 minutes ago, ignore it
-        const now = new Date();
-        const submissionDate = new Date(submission.timestamp * 1000);
-        const diff = now.getTime() - submissionDate.getTime();
-        const diffInMinutes = Math.floor(diff / 1000 / 60);
+    if (userChoice === 'skip') {
+      funcSkip();
+      return;
+    } else if (userChoice === 'override') {
+      funcOverride();
+      useDefaultSubmit = true;
+    } else if (userChoice === 'createNew') {
+      funcCreateNew();
+      useDefaultSubmit = false;
+    }
 
-        if (diffInMinutes > 2) {
-          console.log('❌ HackerRank submission is too old, ignoring');
-          sendResponse({ success: false, error: 'Submission is too old' });
-          return;
-        }
-
-        console.log("✅ HackerRank submission processed:");
-        console.log(submission);
-
-        // Show popup for user choice
-        const userChoice = await showPopup();
-        let useDefaultSubmit: boolean = false;
-
-        if (userChoice === 'skip') {
-          funcSkip();
-          sendResponse({ success: true, action: 'skipped' });
-          return;
-        } else if (userChoice === 'override') {
-          funcOverride();
-          useDefaultSubmit = true;
-        } else if (userChoice === 'createNew') {
-          funcCreateNew();
-          useDefaultSubmit = false;
-        }
-
-        const isPushed = await github.submit(submission, useDefaultSubmit, 'hackerrank');
-        if (isPushed) {
-          chrome.runtime.sendMessage({ type: 'set-fire-icon' });
-          sendResponse({ success: true, action: 'submitted', pushed: true });
-        } else {
-          sendResponse({ success: false, error: 'Failed to push to GitHub' });
-        }
-      } catch (error) {
-        console.error('❌ Error processing HackerRank submission:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        sendResponse({ success: false, error: errorMessage });
-      }
-    })();
-
-    // Return true to indicate we will send a response asynchronously
-    return true;
+    const isPushed = await github.submit(submission, useDefaultSubmit, 'hackerrank');
+    if (isPushed) {
+      chrome.runtime.sendMessage({ type: 'set-fire-icon' });
+      console.log('✅ HackerRank submission synced to GitHub successfully!');
+    } else {
+      console.log('❌ Failed to sync HackerRank submission to GitHub');
+    }
+  } catch (error) {
+    console.error('❌ Error processing intercepted HackerRank submission:', error);
   }
+});
 
-  // For other message types, send a default response
-  sendResponse({ success: false, error: 'Unknown message type' });
+// Keep the old message listener for backward compatibility, but make it simpler
+chrome.runtime.onMessage.addListener(function (request, _sender, sendResponse) {
+  console.log('📨 HackerRank content script received message:', request);
+  
+  // Just acknowledge that we received the message
+  // The real work is now done by the event listener above
+  sendResponse({ success: true, message: 'Using intercepted API responses now' });
 });

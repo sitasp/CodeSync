@@ -106,71 +106,147 @@ chrome.webRequest.onCompleted.addListener(
   },
 );
 
-// Listen for HackerRank submit request
+// Listen for HackerRank submission POST requests and inject response interceptor
 chrome.webRequest.onCompleted.addListener(
   (details: chrome.webRequest.WebResponseCacheDetails) => {
-    // Check if it's a POST request to submit the code
-    if (
-      details.method === 'POST' &&
-      details.url.includes('/rest/contests/master/challenges/') &&
-      details.url.includes('/submissions')
-    ) {
-      const challengeSlug = details.url.match(/\/challenges\/(.*?)\/submissions/)?.[1] ?? null;
+    if (details.method === 'POST' && details.statusCode === 200) {
+      const challengeSlug = details.url.match(/\/challenges\/(.*?)\/submissions/)?.[1];
       if (!challengeSlug) return;
       
-      console.log('🎯 HackerRank submission detected:', challengeSlug);
+      console.log('🎯 HackerRank submission POST detected:', challengeSlug);
       console.log('🔍 Request details - Tab ID:', details.tabId, 'URL:', details.url);
       
-      // Wait 7 secs to complete the checks (HackerRank might need more time)
-      setTimeout(() => {
-        console.log('📤 Sending HackerRank message to tab:', details.tabId);
-        
-        // Send message to the specific tab that made the request
-        if (details.tabId && details.tabId !== -1) {
-          // Set up a timeout for the message
-          const timeoutId = setTimeout(() => {
-            console.warn('⚠️ HackerRank message timeout - content script may be slow');
-          }, 30000); // 30 second timeout warning
-
-          chrome.tabs.sendMessage(details.tabId, {
-            type: 'get-hackerrank-submission',
-            data: { challengeSlug }
-          }, (response) => {
-            clearTimeout(timeoutId);
+      // Inject a script to intercept future API responses for this submission
+      if (details.tabId && details.tabId !== -1) {
+        chrome.scripting.executeScript({
+          target: { tabId: details.tabId },
+          func: (challengeSlug: string) => {
+            console.log('🔧 Setting up HackerRank API interception for:', challengeSlug);
             
-            if (chrome.runtime.lastError) {
-              console.error('❌ HackerRank message failed:', chrome.runtime.lastError.message);
+            // Store original fetch and XMLHttpRequest to intercept responses
+            if (!(window as any).hackerRankInterceptorInstalled) {
+              // Intercept fetch API
+              const originalFetch = window.fetch;
               
-              // Retry once if the message failed
-              const errorMessage = chrome.runtime.lastError.message || '';
-              if (errorMessage.includes('port closed') || 
-                  errorMessage.includes('Receiving end does not exist')) {
-                console.log('🔄 Retrying HackerRank message after 2 seconds...');
-                setTimeout(() => {
-                  chrome.tabs.sendMessage(details.tabId, {
-                    type: 'get-hackerrank-submission',
-                    data: { challengeSlug }
-                  }, (retryResponse) => {
-                    if (chrome.runtime.lastError) {
-                      console.error('❌ HackerRank retry message also failed:', chrome.runtime.lastError.message);
-                    } else {
-                      console.log('✅ HackerRank retry message succeeded:', retryResponse);
+              window.fetch = function(...args) {
+                const [resource, config] = args;
+                const url = typeof resource === 'string' ? resource : 
+                           resource instanceof Request ? resource.url : resource.toString();
+                
+                console.log('🔍 Fetch call intercepted:', url);
+                
+                return originalFetch.apply(this, args).then(response => {
+                  // Check if this is a HackerRank API call
+                  if (url.includes('/rest/contests/master/challenges/')) {
+                    console.log('🎯 HackerRank API call detected:', url, 'Status:', response.status);
+                    
+                    // Clone the response so we can read it without consuming the original
+                    const clonedResponse = response.clone();
+                    
+                    clonedResponse.json().then(data => {
+                      console.log('📊 Full HackerRank API response:', data);
+                      
+                      // Check for submission status in different possible formats
+                      const submissionData = data.model || data;
+                      if (submissionData) {
+                        console.log('🔍 Submission data found:', {
+                          id: submissionData.id,
+                          status: submissionData.status,
+                          status_code: submissionData.status_code,
+                          challenge_slug: submissionData.challenge_slug,
+                          name: submissionData.name
+                        });
+                        
+                        // Check if this is a completed submission
+                        if (submissionData.status === 'Accepted' && submissionData.status_code === 1) {
+                          console.log('🎉 HackerRank submission accepted! Dispatching event...');
+                          
+                          const event = new CustomEvent('hackerrank-submission-accepted', {
+                            detail: {
+                              challengeSlug: submissionData.challenge_slug || challengeSlug,
+                              submissionData: submissionData
+                            }
+                          });
+                          window.dispatchEvent(event);
+                        } else {
+                          console.log('⏳ HackerRank submission still processing:', {
+                            status: submissionData.status,
+                            status_code: submissionData.status_code
+                          });
+                        }
+                      }
+                    }).catch(err => {
+                      console.error('❌ Failed to parse response:', err);
+                      console.log('📄 Raw response text (first 500 chars):', response.clone().text().then(text => 
+                        console.log(text.substring(0, 500))
+                      ));
+                    });
+                  }
+                  
+                  return response;
+                }).catch(error => {
+                  console.error('❌ Fetch error:', error);
+                  throw error;
+                });
+              };
+              
+              // Also try to intercept XMLHttpRequest (in case HackerRank uses XHR)
+              try {
+                const originalXHROpen = XMLHttpRequest.prototype.open;
+                const originalXHRSend = XMLHttpRequest.prototype.send;
+                
+                XMLHttpRequest.prototype.open = function(method: string, url: string | URL, async?: boolean, username?: string | null, password?: string | null) {
+                  (this as any)._url = url;
+                  return originalXHROpen.call(this, method, url, async ?? true, username, password);
+                };
+                
+                XMLHttpRequest.prototype.send = function(data?: any) {
+                  this.addEventListener('load', () => {
+                    if ((this as any)._url && (this as any)._url.includes('/rest/contests/master/challenges/')) {
+                      console.log('🎯 XHR HackerRank API call:', (this as any)._url, 'Status:', this.status);
+                      
+                      try {
+                        const responseData = JSON.parse(this.responseText);
+                        console.log('📊 XHR HackerRank response:', responseData);
+                        
+                        const submissionData = responseData.model || responseData;
+                        if (submissionData && submissionData.status === 'Accepted' && submissionData.status_code === 1) {
+                          console.log('🎉 HackerRank submission accepted via XHR!');
+                          
+                          const event = new CustomEvent('hackerrank-submission-accepted', {
+                            detail: {
+                              challengeSlug: submissionData.challenge_slug || challengeSlug,
+                              submissionData: submissionData
+                            }
+                          });
+                          window.dispatchEvent(event);
+                        }
+                      } catch (e) {
+                        console.log('Could not parse XHR response as JSON:', e);
+                      }
                     }
                   });
-                }, 2000);
+                  
+                  return originalXHRSend.apply(this, [data]);
+                };
+                console.log('✅ XMLHttpRequest interceptor installed');
+              } catch (e) {
+                console.log('⚠️ Could not install XMLHttpRequest interceptor:', e);
               }
-            } else {
-              if (response?.success) {
-                console.log('✅ HackerRank message processed successfully:', response);
-              } else {
-                console.log('⚠️ HackerRank message processed but with issues:', response);
-              }
+              
+              (window as any).hackerRankInterceptorInstalled = true;
+              console.log('✅ HackerRank fetch & XHR interceptors installed');
             }
-          });
-        } else {
-          console.error('❌ Invalid tab ID for HackerRank message:', details.tabId);
-        }
-      }, 7000);
+          },
+          args: [challengeSlug]
+        }, (results) => {
+          if (chrome.runtime.lastError) {
+            console.error('❌ Failed to inject HackerRank interceptor:', chrome.runtime.lastError.message);
+          } else {
+            console.log('✅ HackerRank interceptor script injected');
+          }
+        });
+      }
     }
   },
   {

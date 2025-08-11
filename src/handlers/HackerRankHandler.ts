@@ -1,7 +1,18 @@
 export default class HackerRankHandler {
   private baseUrl: string = 'https://www.hackerrank.com';
 
+  // New method to format intercepted submission data
+  formatSubmissionFromInterceptedData(submissionData: any, challengeSlug: string): any {
+    console.log('🔄 Formatting intercepted HackerRank submission data');
+    
+    // Use the existing formatSubmissionData method but with intercepted data
+    return this.formatSubmissionData(submissionData, challengeSlug);
+  }
+
+  // Keep the old method for backward compatibility, but mark it as deprecated
   async getSubmission(challengeSlug: string, submissionId?: string): Promise<any | null> {
+    console.warn('⚠️ Using deprecated getSubmission method - should use intercepted data instead');
+    
     try {
       console.log('🔍 HackerRank getSubmission called with:', { challengeSlug, submissionId });
       
