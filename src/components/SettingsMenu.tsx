@@ -4,7 +4,6 @@ import {
   Box,
   Button,
   ButtonGroup,
-  Code,
   Divider,
   Flex,
   FormControl,
@@ -13,7 +12,6 @@ import {
   HStack,
   IconButton,
   Input,
-  InputGroup,
   Menu,
   MenuButton,
   MenuGroup,
@@ -29,23 +27,20 @@ import {
   PopoverTrigger,
   Switch,
   Text,
-  Tooltip,
   VStack,
 } from '@chakra-ui/react';
 import React, { useEffect, useState } from 'react';
 import { BiCalendarHeart, BiTrashAlt, BiUnlink } from 'react-icons/bi';
 import { CiSettings } from 'react-icons/ci';
-import { TbSlashes } from 'react-icons/tb';
 import { SiHackerrank, SiLeetcode } from 'react-icons/si';
+import { VscCode } from 'react-icons/vsc';
 import { GithubHandler } from '../handlers';
-import { CustomEditableComponent } from './Editable';
 
 interface SettingsMenuProps {}
 
 const SettingsMenu: React.FC<SettingsMenuProps> = () => {
-  const [subdirectory, setSubdirectoryValue] = useState<string | null>(null);
 
-  const [isOpen, setOpen] = useState<'unlink' | 'clear' | 'subdirectory' | 'leetcode-subdirectory' | 'hackerrank-subdirectory' | null>(null);
+  const [isOpen, setOpen] = useState<'unlink' | 'clear' | 'subdirectory' | 'platform-settings' | null>(null);
   const [githubUsername, setGithubUsername] = React.useState('');
   const [githubRepo, setGithubRepo] = React.useState('');
   const [newRepoURL, setNewRepoURL] = useState('');
@@ -113,57 +108,6 @@ const SettingsMenu: React.FC<SettingsMenuProps> = () => {
     return text.replace(/^\/+|\/+$/g, '');
   };
 
-  const saveSubdirectory = async () => {
-    setLoading(true);
-    //validate the subdirectory
-    if (subdirectory === '' || subdirectory === null) {
-      //this means the user wants to remove the subdirectory
-      await chrome.storage.sync.remove('github_leetsync_subdirectory');
-      setLoading(false);
-      return;
-    }
-    if (!subdirectory?.match(/^[a-zA-Z0-9-_/]+$/)) {
-      setLoading(false);
-      return setError('Invalid subdirectory');
-    }
-
-    await chrome.storage.sync.set({
-      github_leetsync_subdirectory: trimSubdirectory(subdirectory),
-    });
-    setLoading(false);
-  };
-
-  // Provider-specific subdirectory save functions
-  const saveProviderSubdirectory = async (provider: 'leetcode' | 'hackerrank', subdirectory: string) => {
-    setError('');
-    setLoading(true);
-
-    if (subdirectory === '' || subdirectory === null) {
-      // Use default value if empty
-      subdirectory = provider;
-    }
-
-    if (!subdirectory?.match(/^[a-zA-Z0-9-_/]+$/)) {
-      setLoading(false);
-      return setError('Invalid subdirectory');
-    }
-
-    const updatedSettings = {
-      ...providerSettings,
-      [provider]: {
-        ...providerSettings[provider],
-        subdirectory: trimSubdirectory(subdirectory)
-      }
-    };
-
-    await chrome.storage.sync.set({
-      provider_settings: updatedSettings
-    });
-
-    setProviderSettings(updatedSettings);
-    setLoading(false);
-    setOpen(null);
-  };
 
   // Toggle provider on/off
   const toggleProvider = async (provider: 'leetcode' | 'hackerrank') => {
@@ -182,6 +126,42 @@ const SettingsMenu: React.FC<SettingsMenuProps> = () => {
     setProviderSettings(updatedSettings);
   };
 
+  // Unified save function for platform settings popup
+  const saveAllProviderSettings = async () => {
+    setError('');
+    setLoading(true);
+    
+    // Validate all subdirectories
+    for (const [provider, settings] of Object.entries(tempSubdirectoryValues)) {
+      const subdirectory = settings || provider;
+      if (!subdirectory?.match(/^[a-zA-Z0-9-_/]+$/)) {
+        setLoading(false);
+        return setError(`Invalid subdirectory for ${provider}`);
+      }
+    }
+    
+    // Update provider settings with temp values
+    const updatedSettings = {
+      ...providerSettings,
+      leetcode: {
+        ...providerSettings.leetcode,
+        subdirectory: trimSubdirectory(tempSubdirectoryValues.leetcode || 'leetcode')
+      },
+      hackerrank: {
+        ...providerSettings.hackerrank,
+        subdirectory: trimSubdirectory(tempSubdirectoryValues.hackerrank || 'hackerrank')
+      }
+    };
+    
+    await chrome.storage.sync.set({
+      provider_settings: updatedSettings
+    });
+    
+    setProviderSettings(updatedSettings);
+    setLoading(false);
+    setOpen(null);
+  };
+
   useEffect(() => {
     chrome.storage.sync.get(
       ['github_username', 'github_leetsync_repo', 'github_leetsync_token', 'github_leetsync_subdirectory', 'github_leetsync_versioning', 'provider_settings'],
@@ -190,7 +170,6 @@ const SettingsMenu: React.FC<SettingsMenuProps> = () => {
         setGithubUsername(github_username);
         setGithubRepo(github_leetsync_repo);
         setAccessToken(github_leetsync_token);
-        setSubdirectoryValue(github_leetsync_subdirectory);
         setEnableVersioning(github_leetsync_versioning);
 
         // Handle provider settings migration and initialization
@@ -300,54 +279,123 @@ const SettingsMenu: React.FC<SettingsMenuProps> = () => {
               </PopoverFooter>
             </PopoverContent>
           </Popover>
-          <Popover isOpen={isOpen === 'subdirectory'} onClose={() => setOpen(null)} closeOnBlur={false}>
+          <Popover 
+            isOpen={isOpen === 'platform-settings'} 
+            onClose={() => setOpen(null)} 
+            closeOnBlur={false}
+          >
             <PopoverTrigger>
-              <Tooltip label="You can now specify a subdirectory in you repo where your next submissions will be uploaded to.">
-                <MenuItem
-                  h="100%"
-                  icon={<TbSlashes fontSize={'1.2rem'} />}
-                  minH="40px"
-                  onClick={() => setOpen('subdirectory')}
-                  closeOnSelect={false}
-                >
-                  Set a subdirectory{' '}
-                </MenuItem>
-              </Tooltip>
+              <MenuItem
+                h="100%"
+                icon={<VscCode fontSize={'1.2rem'} />}
+                minH="40px"
+                onClick={() => setOpen('platform-settings')}
+                closeOnSelect={false}
+              >
+                Platform Settings
+              </MenuItem>
             </PopoverTrigger>
-            <PopoverContent zIndex={10000} w="400px" paddingBottom={'1rem'}>
-              <PopoverHeader fontWeight="semibold">Set Subdirectory</PopoverHeader>
-              <Text fontSize="sm" padding="2">
-                if you set it to <Code fontSize="xs">/LinkedList/Easy</Code>, your next submissions will be uploaded
-                there.
-              </Text>
+            <PopoverContent zIndex={10000} w="450px">
+              <PopoverHeader fontWeight="semibold">Platform Settings</PopoverHeader>
               <PopoverArrow />
               <PopoverCloseButton />
               <PopoverBody>
-                <FormControl isInvalid={!!error}>
-                  <InputGroup size="sm">
-                    <CustomEditableComponent
-                      value={subdirectory || ''}
-                      defaultValue={subdirectory || ''}
-                      onChange={(value) => setSubdirectoryValue(value)}
-                      onSubmit={saveSubdirectory}
-                      props={{
-                        isDisabled: loading,
-                        placeholder: 'No subdirectory set',
-                      }}
-                    />
-                  </InputGroup>
-                  {!error ? (
-                    <FormHelperText fontSize={'xs'}>
-                      You next submissions will be uploaded at{' '}
-                      <Code fontSize="xs">
-                        {`3ba2ii/leetcode-problem-solving/${(subdirectory && trimSubdirectory(subdirectory)) || ''}`}
-                      </Code>
-                    </FormHelperText>
-                  ) : (
+                <VStack align="start" spacing={4}>
+                  {/* LeetCode Section */}
+                  <Box w="100%">
+                    <HStack justify="space-between" w="100%" mb={2}>
+                      <HStack>
+                        <SiLeetcode color="#FFA500" fontSize="1.2rem" />
+                        <Box>
+                          <Text fontWeight="medium">LeetCode</Text>
+                          <Text fontSize="xs" color="gray.500">Sync LeetCode submissions</Text>
+                        </Box>
+                      </HStack>
+                      <Switch
+                        isChecked={providerSettings.leetcode.enabled}
+                        onChange={() => toggleProvider('leetcode')}
+                        colorScheme="orange"
+                        size="sm"
+                      />
+                    </HStack>
+                    {providerSettings.leetcode.enabled && (
+                      <Box pl={6}>
+                        <Text fontSize="sm" mb={1} color="gray.600">Subdirectory:</Text>
+                        <Input 
+                          size="sm"
+                          placeholder="leetcode"
+                          value={tempSubdirectoryValues.leetcode}
+                          onChange={(e) => setTempSubdirectoryValues(prev => ({...prev, leetcode: e.target.value}))}
+                        />
+                      </Box>
+                    )}
+                  </Box>
+
+                  {/* HackerRank Section */}
+                  <Box w="100%">
+                    <HStack justify="space-between" w="100%" mb={2}>
+                      <HStack>
+                        <SiHackerrank color="#00EA64" fontSize="1.2rem" />
+                        <Box>
+                          <Text fontWeight="medium">HackerRank</Text>
+                          <HStack>
+                            <Text fontSize="xs" color="gray.500">Sync HackerRank submissions</Text>
+                            <Badge size="sm" fontSize="xs" colorScheme="blue">Coming Soon</Badge>
+                          </HStack>
+                        </Box>
+                      </HStack>
+                      <Switch
+                        isChecked={providerSettings.hackerrank.enabled}
+                        onChange={() => toggleProvider('hackerrank')}
+                        colorScheme="green"
+                        size="sm"
+                      />
+                    </HStack>
+                    {providerSettings.hackerrank.enabled && (
+                      <Box pl={6}>
+                        <Text fontSize="sm" mb={1} color="gray.600">Subdirectory:</Text>
+                        <Input 
+                          size="sm"
+                          placeholder="hackerrank"
+                          value={tempSubdirectoryValues.hackerrank}
+                          onChange={(e) => setTempSubdirectoryValues(prev => ({...prev, hackerrank: e.target.value}))}
+                        />
+                      </Box>
+                    )}
+                  </Box>
+                </VStack>
+                
+                {error && (
+                  <FormControl isInvalid mt={3}>
                     <FormErrorMessage fontSize={'xs'}>{error}</FormErrorMessage>
-                  )}
-                </FormControl>
+                  </FormControl>
+                )}
               </PopoverBody>
+              <PopoverFooter display="flex" justifyContent="flex-end">
+                <ButtonGroup size="sm">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      // Reset temp values to current settings
+                      setTempSubdirectoryValues({
+                        leetcode: providerSettings.leetcode.subdirectory,
+                        hackerrank: providerSettings.hackerrank.subdirectory
+                      });
+                      setOpen(null);
+                    }}
+                    isLoading={loading}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    colorScheme="blue" 
+                    onClick={saveAllProviderSettings}
+                    isLoading={loading}
+                  >
+                    Save Settings
+                  </Button>
+                </ButtonGroup>
+              </PopoverFooter>
             </PopoverContent>
           </Popover>
 
@@ -362,169 +410,6 @@ const SettingsMenu: React.FC<SettingsMenuProps> = () => {
               Soon 🤩
             </Badge>
           </MenuItem>
-        </MenuGroup>
-        <Divider />
-        <MenuGroup title="Platform Settings" ml={3} mb={2}>
-          {/* LeetCode Provider */}
-          <MenuItem
-            as={Flex}
-            justifyContent="space-between"
-            alignItems="center"
-            onClick={(e) => {
-              e.preventDefault();
-              toggleProvider('leetcode');
-            }}
-          >
-            <HStack>
-              <SiLeetcode color="#FFA500" fontSize="1.2rem" />
-              <Box>
-                <Text fontWeight="medium">LeetCode</Text>
-                <Text fontSize="sm" color="gray.500">
-                  Sync LeetCode submissions
-                </Text>
-              </Box>
-            </HStack>
-            <Switch
-              isChecked={providerSettings.leetcode.enabled}
-              pointerEvents="none"
-              colorScheme="orange"
-            />
-          </MenuItem>
-
-          {/* LeetCode Subdirectory - only shown when enabled */}
-          {providerSettings.leetcode.enabled && (
-            <Popover
-              isOpen={isOpen === 'leetcode-subdirectory'}
-              onClose={() => setOpen(null)}
-              closeOnBlur={false}
-            >
-              <PopoverTrigger>
-                <MenuItem
-                  ml={6}
-                  h="100%"
-                  icon={<TbSlashes fontSize={'1.2rem'} />}
-                  minH="35px"
-                  onClick={() => setOpen('leetcode-subdirectory')}
-                  closeOnSelect={false}
-                  fontSize="sm"
-                >
-                  Subdirectory: <Code ml={1}>{providerSettings.leetcode.subdirectory}</Code>
-                </MenuItem>
-              </PopoverTrigger>
-              <PopoverContent zIndex={10000} w="350px">
-                <PopoverHeader fontWeight="semibold">LeetCode Subdirectory</PopoverHeader>
-                <PopoverArrow />
-                <PopoverCloseButton />
-                <PopoverBody>
-                  <FormControl isInvalid={!!error}>
-                    <InputGroup size="sm">
-                      <CustomEditableComponent
-                        value={tempSubdirectoryValues.leetcode}
-                        defaultValue={tempSubdirectoryValues.leetcode}
-                        onChange={(value) => setTempSubdirectoryValues(prev => ({...prev, leetcode: value}))}
-                        onSubmit={() => saveProviderSubdirectory('leetcode', tempSubdirectoryValues.leetcode)}
-                        props={{
-                          isDisabled: loading,
-                          placeholder: 'leetcode',
-                        }}
-                      />
-                    </InputGroup>
-                    {!error ? (
-                      <FormHelperText fontSize={'xs'}>
-                        LeetCode problems will be uploaded to{' '}
-                        <Code fontSize="xs">
-                          {`${githubRepo}/${tempSubdirectoryValues.leetcode || 'leetcode'}/`}
-                        </Code>
-                      </FormHelperText>
-                    ) : (
-                      <FormErrorMessage fontSize={'xs'}>{error}</FormErrorMessage>
-                    )}
-                  </FormControl>
-                </PopoverBody>
-              </PopoverContent>
-            </Popover>
-          )}
-
-          {/* HackerRank Provider */}
-          <MenuItem
-            as={Flex}
-            justifyContent="space-between"
-            alignItems="center"
-            onClick={(e) => {
-              e.preventDefault();
-              toggleProvider('hackerrank');
-            }}
-          >
-            <HStack>
-              <SiHackerrank color="#00EA64" fontSize="1.2rem" />
-              <Box>
-                <Text fontWeight="medium">HackerRank</Text>
-                <Text fontSize="sm" color="gray.500">
-                  Sync HackerRank submissions
-                  <Badge ml={1} size="sm" fontSize="xs" colorScheme="blue">Coming Soon</Badge>
-                </Text>
-              </Box>
-            </HStack>
-            <Switch
-              isChecked={providerSettings.hackerrank.enabled}
-              pointerEvents="none"
-              colorScheme="green"
-            />
-          </MenuItem>
-
-          {/* HackerRank Subdirectory - only shown when enabled */}
-          {providerSettings.hackerrank.enabled && (
-            <Popover
-              isOpen={isOpen === 'hackerrank-subdirectory'}
-              onClose={() => setOpen(null)}
-              closeOnBlur={false}
-            >
-              <PopoverTrigger>
-                <MenuItem
-                  ml={6}
-                  h="100%"
-                  icon={<TbSlashes fontSize={'1.2rem'} />}
-                  minH="35px"
-                  onClick={() => setOpen('hackerrank-subdirectory')}
-                  closeOnSelect={false}
-                  fontSize="sm"
-                >
-                  Subdirectory: <Code ml={1}>{providerSettings.hackerrank.subdirectory}</Code>
-                </MenuItem>
-              </PopoverTrigger>
-              <PopoverContent zIndex={10000} w="350px">
-                <PopoverHeader fontWeight="semibold">HackerRank Subdirectory</PopoverHeader>
-                <PopoverArrow />
-                <PopoverCloseButton />
-                <PopoverBody>
-                  <FormControl isInvalid={!!error}>
-                    <InputGroup size="sm">
-                      <CustomEditableComponent
-                        value={tempSubdirectoryValues.hackerrank}
-                        defaultValue={tempSubdirectoryValues.hackerrank}
-                        onChange={(value) => setTempSubdirectoryValues(prev => ({...prev, hackerrank: value}))}
-                        onSubmit={() => saveProviderSubdirectory('hackerrank', tempSubdirectoryValues.hackerrank)}
-                        props={{
-                          isDisabled: loading,
-                          placeholder: 'hackerrank',
-                        }}
-                      />
-                    </InputGroup>
-                    {!error ? (
-                      <FormHelperText fontSize={'xs'}>
-                        HackerRank problems will be uploaded to{' '}
-                        <Code fontSize="xs">
-                          {`${githubRepo}/${tempSubdirectoryValues.hackerrank || 'hackerrank'}/`}
-                        </Code>
-                      </FormHelperText>
-                    ) : (
-                      <FormErrorMessage fontSize={'xs'}>{error}</FormErrorMessage>
-                    )}
-                  </FormControl>
-                </PopoverBody>
-              </PopoverContent>
-            </Popover>
-          )}
         </MenuGroup>
         <Divider />
         <MenuGroup title="Versioning Settings" ml={3} mb={2}>
