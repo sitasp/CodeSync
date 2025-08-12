@@ -312,7 +312,7 @@ export default class GithubHandler {
     const platformName = provider === 'leetcode' ? 'LeetCode' : 'HackerRank';
     const msg = `Time: ${stats.runtimeDisplay} (${stats.runtimePercentile.toFixed(2)}%) | Memory: ${
       stats.memoryDisplay
-    } (${stats.memoryPercentile.toFixed(2)}%) - ${platformName} via LeetSync`;
+    } (${stats.memoryPercentile.toFixed(2)}%) - ${platformName} via CodeSync`;
     await this.upload(path, `${problemName}${lang}`, code, msg, useDefaultSubmit);
   }
 

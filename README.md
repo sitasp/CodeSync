@@ -1,6 +1,6 @@
-# LeetSync Chrome Extension
+# CodeSync Chrome Extension
 
-LeetSync is a Chrome extension that enables you to sync your LeetCode problem submissions with a selected GitHub repository. With this extension, you can easily track your coding progress and share your solutions with others on GitHub.
+CodeSync is a Chrome extension that enables you to sync your LeetCode problem submissions with a selected GitHub repository. With this extension, you can easily track your coding progress and share your solutions with others on GitHub.
 
 ## Table of Contents
 
@@ -13,11 +13,11 @@ LeetSync is a Chrome extension that enables you to sync your LeetCode problem su
 
 ## How it Works
 
-LeetSync utilizes the LeetCode API to fetch your submission data and the GitHub API to create a new file or update an existing one in your selected repository.
+CodeSync utilizes the LeetCode API to fetch your submission data and the GitHub API to create a new file or update an existing one in your selected repository.
 
 ## Installation
 
-To install LeetSync, follow these steps:
+To install CodeSync, follow these steps:
 
 1. Download the latest release of the extension from the [Chrome Web Store](https://chrome.google.com/webstore/detail/leetsync-leetcode-synchro/ppkbejeolfcbaomanmbpjdbkfcjfhjnd?hl=en&authuser=0).
 2. Install the extension by clicking the "Add to Chrome" button.
@@ -25,7 +25,7 @@ To install LeetSync, follow these steps:
 
 ## Get Started
 
-To configure LeetSync, follow these steps:
+To configure CodeSync, follow these steps:
 
 1. Click on the extension icon in your Chrome toolbar.
 2. In the popup window, Give Access via Github.
@@ -35,15 +35,15 @@ To configure LeetSync, follow these steps:
 
 ## Usage
 
-To use LeetSync, follow these steps:
+To use CodeSync, follow these steps:
 
 1. Solve a problem on LeetCode and submit your solution.
-2. LeetSync will create a new file or update an existing one in your selected repository automatically.
+2. CodeSync will create a new file or update an existing one in your selected repository automatically.
 3. Go and check the submission on your github repository
 
 ## Support
 
-If you encounter any issues or have any suggestions for improving LeetSync, please feel free to [open an issue](https://github.com/3ba2ii/leet-sync/issues) on the GitHub repository.
+If you encounter any issues or have any suggestions for improving CodeSync, please feel free to [open an issue](https://github.com/3ba2ii/leet-sync/issues) on the GitHub repository.
 
 ## Contributing
 
@@ -51,4 +51,4 @@ Contributions are welcome! If you want to contribute to the project, please foll
 
 ## License
 
-LeetSync is licensed under the [MIT License](LICENSE).
+CodeSync is licensed under the [MIT License](LICENSE).

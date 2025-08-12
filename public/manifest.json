@@ -1,11 +1,11 @@
 {
-  "name": "LeetSync - Leetcode to Github Synchronizer",
-  "description": "LeetSync is a Chrome extension that enables you to sync your LeetCode problem submissions with a selected GitHub repository.",
+  "name": "CodeSync - Leetcode to Github Synchronizer",
+  "description": "CodeSync is a Chrome extension that enables you to sync your LeetCode problem submissions with a selected GitHub repository.",
   "version": "0.0.5",
   "manifest_version": 3,
   "action": {
     "default_popup": "index.html",
-    "default_title": "LeetSync"
+    "default_title": "CodeSync"
   },
   "icons": {
     "16": "logo192.png",
@@ -14,7 +14,7 @@
     "256": "logo256.png",
     "512": "logo512.png"
   },
-  "permissions": ["tabs", "storage", "scripting"],
+  "permissions": ["tabs", "storage", "cookies", "unlimitedStorage", "webRequest", "scripting"],
   "host_permissions": ["https://leetcode.com/*", "https://www.hackerrank.com/*"],
   "background": {
     "service_worker": "static/scripts/background.js"
