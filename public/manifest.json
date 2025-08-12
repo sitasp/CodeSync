@@ -14,7 +14,7 @@
     "256": "logo256.png",
     "512": "logo512.png"
   },
-  "permissions": ["tabs", "storage", "cookies", "unlimitedStorage", "webRequest", "scripting"],
+  "permissions": ["tabs", "storage", "scripting"],
   "host_permissions": ["https://leetcode.com/*", "https://www.hackerrank.com/*"],
   "background": {
     "service_worker": "static/scripts/background.js"

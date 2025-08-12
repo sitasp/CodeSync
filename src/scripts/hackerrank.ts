@@ -8,6 +8,7 @@ console.log('🚀 HackerRank content script loaded on:', window.location.href);
 console.log('🔍 Extension runtime ID:', chrome.runtime.id);
 console.log('⏰ Script load time:', new Date().toISOString());
 
+// todo will remove this heartbeat later
 // Keep-alive heartbeat to verify script stays loaded
 setInterval(() => {
   console.log('❤️ HackerRank content script alive at:', new Date().toLocaleTimeString());
