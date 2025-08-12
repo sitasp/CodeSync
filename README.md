@@ -28,9 +28,9 @@ To install CodeSync, follow these steps [OUTDATED]:
 To Build & install by yourself, follow these steps.
 
 1. Build the extension by yourself
-   a. `npm install`
-   b. `npm run build`
-2. Load the generated build file to your chrome/edge browser using 'Load Unpacked Extension'.
+- `npm install`
+- `npm run build`
+3. Load the generated build file to your chrome/edge browser using 'Load Unpacked Extension'.
 
 ## Get Started
 
@@ -60,7 +60,7 @@ Contributions are welcome! If you want to contribute to the project, please foll
 
 ## Tribute
 
-I want to thank the original creators of [LeetSync](https://github.com/LeetSync/LeetSync). This repo is inspired and derived from there.
+I want to thank the original creators of [LeetSync](https://github.com/LeetSync/LeetSync). This repo is inspired and derived from there. So you might get LeetSync reference here & there.
 
 ## License
 
