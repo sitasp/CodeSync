@@ -30,7 +30,7 @@ To Build & install by yourself, follow these steps.
 1. Build the extension by yourself
 - `npm install`
 - `npm run build`
-3. Load the generated build file to your chrome/edge browser using 'Load Unpacked Extension'.
+2. Load the generated build file to your chrome/edge browser using 'Load Unpacked Extension'.
 
 ## Get Started
 
