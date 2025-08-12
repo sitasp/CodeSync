@@ -27,7 +27,9 @@ To install CodeSync, follow these steps [OUTDATED]:
 
 To Build & install by yourself, follow these steps.
 
-1. Build the extension by yourself using `npm run build`.
+1. Build the extension by yourself
+   a. `npm install`
+   b. `npm run build`
 2. Load the generated build file to your chrome/edge browser using 'Load Unpacked Extension'.
 
 ## Get Started
