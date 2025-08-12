@@ -17,11 +17,18 @@ CodeSync utilizes the LeetCode API to fetch your submission data and the GitHub 
 
 ## Installation
 
-To install CodeSync, follow these steps:
+To install CodeSync, follow these steps [OUTDATED]:
 
 1. Download the latest release of the extension from the [Chrome Web Store](https://chrome.google.com/webstore/detail/CodeSync-leetcode-synchro/ppkbejeolfcbaomanmbpjdbkfcjfhjnd?hl=en&authuser=0).
 2. Install the extension by clicking the "Add to Chrome" button.
 3. Once the installation is complete, click on the extension icon in your Chrome toolbar to configure it.
+
+## Build
+
+To Build & install by yourself, follow these steps.
+
+1. Build the extension by yourself using `npm run build`.
+2. Load the generated build file to your chrome/edge browser using 'Load Unpacked Extension'.
 
 ## Get Started
 
@@ -48,6 +55,10 @@ If you encounter any issues or have any suggestions for improving CodeSync, plea
 ## Contributing
 
 Contributions are welcome! If you want to contribute to the project, please follow the [contributing guidelines](CONTRIBUTING.md).
+
+## Tribute
+
+I want to thank the original creators of [LeetSync](https://github.com/LeetSync/LeetSync). This repo is inspired and derived from there.
 
 ## License
 
