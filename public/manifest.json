@@ -16,6 +16,12 @@
   },
   "permissions": ["tabs", "storage", "cookies", "unlimitedStorage", "webRequest"],
   "host_permissions": ["https://leetcode.com/*"],
+  "web_accessible_resources": [
+    {
+      "resources": ["static/scripts/api-interceptor-standalone.js"],
+      "matches": ["https://leetcode.com/*"]
+    }
+  ],
   "background": {
     "service_worker": "static/scripts/background.js"
   },
@@ -28,7 +34,7 @@
     {
       "matches": ["https://leetcode.com/problems/*"],
       "js": ["static/scripts/leetcode.js"],
-      "run_at": "document_idle"
+      "run_at": "document_start"
     }
   ]
 }

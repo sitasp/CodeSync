@@ -11,7 +11,6 @@ import {
 } from '@chakra-ui/react';
 import { useEffect, useState } from 'react';
 import { BsGithub } from 'react-icons/bs';
-import { SiLeetcode } from 'react-icons/si';
 import { useNavigate } from 'react-router-dom';
 import Logo from '../components/Logo';
 import { GITHUB_REDIRECT_URI, GITHUB_CLIENT_ID } from '../constants';
@@ -68,55 +67,6 @@ const AuthorizeWithGtihub = ({ nextStep }: { nextStep: Function }) => {
         Login with GitHub
       </Button>
       <small>You can revoke access at any time.</small>
-    </VStack>
-  );
-};
-const AuthorizeWithLeetCode = ({ nextStep }: { nextStep: Function }) => {
-  const [leetcodeSession, setLeetcodeSession] = useState<string | null>(null);
-
-  const handleClicked = () => {
-    const authUrl = `https://leetcode.com/accounts/login/`;
-    chrome.storage.sync.set({ pipe_leethub: true }, () => {
-      chrome.tabs.create({ url: authUrl, active: true }, function (x) {
-        chrome.tabs.getCurrent(function (tab) {
-          if (!tab?.id) return;
-          chrome.tabs.remove(tab?.id, function () {});
-        });
-      });
-    });
-  };
-  useEffect(() => {
-    if (leetcodeSession && leetcodeSession.length > 0) {
-      nextStep();
-    }
-  }, [leetcodeSession]);
-
-  useEffect(() => {
-    chrome.storage.sync.get(['leetcode_session'], (result) => {
-      if (result.leetcode_session) {
-        setLeetcodeSession(result.leetcode_session);
-      }
-    });
-  }, []);
-
-  return (
-    <VStack w='100%'>
-      <VStack>
-        <Heading size='md'>Authorize LeetCode</Heading>
-        <Text color='GrayText' fontSize={'sm'} w='90%' textAlign={'center'}>
-          To sync your submissions on LeetCode, we need access to your account
-          first.
-        </Text>
-      </VStack>
-
-      <Button
-        colorScheme={'yellow'}
-        w='100%'
-        onClick={handleClicked}
-        leftIcon={<SiLeetcode />}
-      >
-        Login with LeetCode
-      </Button>
     </VStack>
   );
 };
@@ -234,6 +184,5 @@ const StartOnboarding = ({ nextStep }: { nextStep: Function }) => {
 export {
   StartOnboarding,
   AuthorizeWithGtihub,
-  AuthorizeWithLeetCode,
   SelectRepositoryStep,
 };

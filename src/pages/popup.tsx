@@ -2,7 +2,6 @@ import { CircularProgress, Container, Heading, VStack } from '@chakra-ui/react';
 import React, { useEffect, useState } from 'react';
 import {
   AuthorizeWithGtihub,
-  AuthorizeWithLeetCode,
   SelectRepositoryStep,
   StartOnboarding,
 } from '../modules/CompleteAuthentication';
@@ -14,7 +13,6 @@ type UserGlobalData = {
   github_leetsync_token: string;
   github_username: string;
   github_leetsync_repo: string;
-  leetcode_session: string;
 };
 
 const hasCompletedRequirements = (
@@ -23,8 +21,7 @@ const hasCompletedRequirements = (
   return !!(
     userData.github_leetsync_token &&
     userData.github_username &&
-    userData.github_leetsync_repo &&
-    userData.leetcode_session
+    userData.github_leetsync_repo
   );
 };
 const getUserData = async (): Promise<Partial<UserGlobalData>> => {
@@ -35,14 +32,12 @@ const getUserData = async (): Promise<Partial<UserGlobalData>> => {
       'github_leetsync_token',
       'github_username',
       'github_leetsync_repo',
-      'leetcode_session',
     ])
     .then((result) => {
       userData = {
         github_leetsync_token: result.github_leetsync_token,
         github_username: result.github_username,
         github_leetsync_repo: result.github_leetsync_repo,
-        leetcode_session: result.leetcode_session,
       };
     });
 
@@ -52,8 +47,7 @@ const getUserData = async (): Promise<Partial<UserGlobalData>> => {
 const STEPS_TO_COMPONENT = {
   0: StartOnboarding,
   1: AuthorizeWithGtihub,
-  2: AuthorizeWithLeetCode,
-  3: SelectRepositoryStep,
+  2: SelectRepositoryStep,
 };
 
 const PopupPage: React.FC<PopupProps> = () => {
@@ -79,9 +73,6 @@ const PopupPage: React.FC<PopupProps> = () => {
       return <AuthorizeWithGtihub nextStep={nextStep} />;
     }
     if (step === 2) {
-      return <AuthorizeWithLeetCode nextStep={nextStep} />;
-    }
-    if (step === 3) {
       return <SelectRepositoryStep nextStep={nextStep} />;
     }
   };
@@ -106,11 +97,9 @@ const PopupPage: React.FC<PopupProps> = () => {
           setIsSynced(true);
           setUserData(result);
         }
-        let newStep = 3;
+        let newStep = 2;
         if (!result.github_leetsync_token && !result.github_username) {
           newStep = 0;
-        } else if (!result.leetcode_session) {
-          newStep = 2;
         }
         setSteps(newStep);
       });

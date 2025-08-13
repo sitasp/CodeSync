@@ -1,11 +1,45 @@
 //this script should only run in leetcode/problems/*.com pages  (i.e. the problem page)
 
-import { LeetCodeHandler, GithubHandler } from '../handlers';
+import { GithubHandler } from '../handlers';
+import { injectAPIInterceptor } from './api-interceptor';
+import { Submission } from '../types/Submission';
 
-const leetcode = new LeetCodeHandler();
 const github = new GithubHandler();
 
-const sleep = async (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+console.log('🎬 LeetCode content script starting...');
+
+// Inject API interceptor when script loads
+console.log('🎯 About to inject API interceptor...');
+injectAPIInterceptor();
+console.log('✅ API interceptor injection completed');
+
+// const sleep = async (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Listen for intercepted API data from the injected script
+window.addEventListener('message', (event) => {
+  // Only accept messages from same origin
+  if (event.origin !== window.location.origin) return;
+  
+  if (event.data.type === 'LEETCODE_GRAPHQL_RESPONSE') {
+    // Log all GraphQL responses for debugging
+    const { data, questionSlug, source, url } = event.data;
+    console.log(`🔍 GraphQL Response [${source}]:`, { url, questionSlug, data });
+  }
+  
+  if (event.data.type === 'LEETCODE_SUBMISSION_DATA') {
+    const { data, questionSlug, timestamp } = event.data;
+    
+    console.log('📨 Received intercepted submission data:', { questionSlug, timestamp });
+    
+    // Forward to background script for caching
+    chrome.runtime.sendMessage({
+      type: 'CACHE_SUBMISSION_DATA',
+      questionSlug,
+      submissionData: data,
+      timestamp
+    });
+  }
+});
 
 // Function to show popup
 async function showPopup() {
@@ -148,49 +182,98 @@ function funcCreateNew() {
   console.log('Creating new submission');
 }
 
+// Helper function to extract submission details from intercepted data
+function extractSubmissionFromData(data: any): Submission | null {
+  try {
+    // Handle different response formats
+    let submissionDetails = null;
+    
+    if (data.submissionDetails) {
+      submissionDetails = data.submissionDetails;
+    } else if (data.data && data.data.submissionDetails) {
+      submissionDetails = data.data.submissionDetails;
+    }
+    
+    if (!submissionDetails) {
+      console.log('❌ No submission details found in intercepted data');
+      return null;
+    }
+    
+    return submissionDetails as Submission;
+  } catch (error) {
+    console.error('❌ Error extracting submission data:', error);
+    return null;
+  }
+}
+
+// Helper function to validate submission timestamp
+function isRecentSubmission(timestamp: number): boolean {
+  const now = new Date();
+  const submissionDate = new Date(timestamp * 1000);
+  const diff = now.getTime() - submissionDate.getTime();
+  const diffInMinutes = Math.floor(diff / 1000 / 60);
+  
+  return diffInMinutes <= 1;
+}
+
+
+// Process submission data (either cached or fallback)
+async function processSubmissionData(submission: Submission) {
+  console.log('📝 Processing submission:', submission);
+  
+  // Show popup for user choice
+  const userChoice = await showPopup();
+  let useDefaultSubmit: boolean = false;
+  
+  if (userChoice === 'skip') {
+    funcSkip();
+    return;
+  } else if (userChoice === 'override') {
+    funcOverride();
+    useDefaultSubmit = true;
+  } else if (userChoice === 'createNew') {
+    funcCreateNew();
+    useDefaultSubmit = false;
+  }
+  
+  const isPushed = await github.submit(submission, useDefaultSubmit);
+  if (isPushed) {
+    chrome.runtime.sendMessage({ type: 'set-fire-icon' });
+  }
+}
+
 chrome.runtime.onMessage.addListener(async function (request, _s, _sendResponse) {
-  if (request && request.type === 'get-submission') {
-    const questionSlug = request?.data?.questionSlug;
-
-    if (!questionSlug) return;
-
-    let retries = 0;
-    let submission = await leetcode.getSubmission(questionSlug);
-    while (!submission && retries < 3) {
-      retries++;
-      await sleep(retries * 1000);
-      submission = await leetcode.getSubmission(questionSlug);
-    }
-    if (!submission) return;
-    //validate submission's timestamp, if its was submitted more than 1 minute ago, then its an old submission and we should ignore it
-    const now = new Date();
-    const submissionDate = new Date(submission.timestamp * 1000);
-    const diff = now.getTime() - submissionDate.getTime();
-    const diffInMinutes = Math.floor(diff / 1000 / 60);
-
-    if (diffInMinutes > 1) return;
-
-    console.log("Inside after submission ");
-    console.log(submission);
-
-
-    // Show popup for user choice
-    const userChoice = await showPopup();
-    let useDefaultSubmit:boolean = false;
-    if (userChoice === 'skip') {
-      funcSkip();
+  if (request && request.type === 'process-cached-submission') {
+    const { questionSlug, submissionData } = request;
+    
+    console.log('💾 Processing cached submission for:', questionSlug);
+    
+    const submission = extractSubmissionFromData(submissionData);
+    if (!submission) {
+      console.log('❌ Failed to extract submission from cached data');
       return;
-    } else if (userChoice === 'override') {
-      funcOverride();
-      useDefaultSubmit = true;
-    } else if (userChoice === 'createNew') {
-      funcCreateNew();
-      useDefaultSubmit = false;
     }
-
-    const isPushed = await github.submit(submission, useDefaultSubmit);
-    if (isPushed) {
-      chrome.runtime.sendMessage({ type: 'set-fire-icon' });
+    
+    // Validate submission is recent
+    if (!isRecentSubmission(submission.timestamp)) {
+      console.log('⏰ Submission is too old, ignoring');
+      return;
     }
+    
+    // Only process successful submissions
+    if (submission.statusCode !== 10) {
+      console.log('❌ Submission failed, not processing');
+      return;
+    }
+    
+    await processSubmissionData(submission);
+  } else if (request && request.type === 'get-submission-fallback') {
+    // Fallback method - this should rarely be needed with the new architecture
+    const questionSlug = request?.data?.questionSlug;
+    console.log('🔄 Using fallback method for:', questionSlug);
+    
+    // Note: This would require LeetCodeHandler which we're removing
+    // For now, just log that we couldn't process this submission
+    console.log('⚠️ Fallback method not implemented - submission missed');
   }
 });

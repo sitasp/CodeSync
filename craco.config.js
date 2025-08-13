@@ -12,6 +12,7 @@ module.exports = {
           leetcode: './src/scripts/leetcode.ts',
           background: './src/background.ts',
           'authorize-github': './src/scripts/authorize-github.ts',
+          'api-interceptor-standalone': './src/scripts/api-interceptor-standalone.ts',
         },
         output: {
           ...webpackConfig.output,
