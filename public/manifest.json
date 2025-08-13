@@ -18,7 +18,7 @@
   "host_permissions": ["https://leetcode.com/*"],
   "web_accessible_resources": [
     {
-      "resources": ["static/scripts/api-interceptor-standalone.js"],
+      "resources": ["static/scripts/providers/leetcode/api-interceptor-standalone.js"],
       "matches": ["https://leetcode.com/*"]
     }
   ],

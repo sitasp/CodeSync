@@ -15,28 +15,41 @@ console.log('✅ API interceptor injection completed');
 
 // const sleep = async (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Listen for intercepted API data from the injected script
+// Listen for intercepted API data from the modular injected script
 window.addEventListener('message', (event) => {
   // Only accept messages from same origin
   if (event.origin !== window.location.origin) return;
   
-  if (event.data.type === 'LEETCODE_GRAPHQL_RESPONSE') {
-    // Log all GraphQL responses for debugging
-    const { data, questionSlug, source, url } = event.data;
-    console.log(`🔍 GraphQL Response [${source}]:`, { url, questionSlug, data });
+  const { type, provider, data, timestamp, metadata } = event.data;
+  
+  // Handle API responses (for debugging)
+  if (type === 'API_RESPONSE' && provider === 'LeetCode') {
+    console.log(`🔍 API Response [${metadata?.source}]:`, {
+      url: metadata?.url,
+      provider,
+      data,
+      debugInfo: metadata?.debugInfo
+    });
   }
   
-  if (event.data.type === 'LEETCODE_SUBMISSION_DATA') {
-    const { data, questionSlug, timestamp } = event.data;
-    
-    console.log('📨 Received intercepted submission data:', { questionSlug, timestamp });
+  // Handle submission data
+  if (type === 'SUBMISSION_DATA' && provider === 'LeetCode') {
+    console.log('📨 Received intercepted submission data:', {
+      provider,
+      problemId: metadata?.problemId,
+      language: metadata?.language,
+      status: metadata?.status,
+      timestamp
+    });
     
     // Forward to background script for caching
+    // Note: data is now standardized SubmissionData format
     chrome.runtime.sendMessage({
       type: 'CACHE_SUBMISSION_DATA',
-      questionSlug,
-      submissionData: data,
-      timestamp
+      questionSlug: data.problem.slug || data.problem.problemId,
+      submissionData: data, // This is now standardized format
+      timestamp,
+      provider
     });
   }
 });
@@ -185,7 +198,13 @@ function funcCreateNew() {
 // Helper function to extract submission details from intercepted data
 function extractSubmissionFromData(data: any): Submission | null {
   try {
-    // Handle different response formats
+    // Check if this is the new standardized format (from modular provider)
+    if (data.code && data.language && data.problem && data.timestamp) {
+      // Convert standardized SubmissionData to legacy Submission format
+      return convertStandardizedToLegacy(data);
+    }
+    
+    // Handle legacy formats (for backwards compatibility)
     let submissionDetails = null;
     
     if (data.submissionDetails) {
@@ -204,6 +223,42 @@ function extractSubmissionFromData(data: any): Submission | null {
     console.error('❌ Error extracting submission data:', error);
     return null;
   }
+}
+
+// Convert standardized SubmissionData format to legacy Submission format
+function convertStandardizedToLegacy(standardData: any): Submission {
+  return {
+    code: standardData.code,
+    timestamp: standardData.timestamp,
+    statusCode: standardData.status === 'Accepted' ? 10 : 11, // Map status to code
+    runtime: standardData.performance?.runtime?.replace(/[^0-9]/g, '') || 0,
+    runtimeDisplay: standardData.performance?.runtime || '0 ms',
+    runtimePercentile: standardData.performance?.runtimePercentile || 50,
+    runtimeDistribution: { lang: standardData.language, distribution: ['0', 0] },
+    memory: standardData.performance?.memory?.replace(/[^0-9]/g, '') || 0,
+    memoryDisplay: standardData.performance?.memory || '0 MB',
+    memoryPercentile: standardData.performance?.memoryPercentile || 50,
+    memoryDistribution: { lang: standardData.language, distribution: ['0', 0] },
+    lang: {
+      name: standardData.language.toLowerCase(),
+      verboseName: standardData.language
+    },
+    question: {
+      questionId: standardData.problem.problemId,
+      title: standardData.problem.title || '',
+      titleSlug: standardData.problem.slug || standardData.problem.problemId,
+      content: standardData.problem.content || '',
+      difficulty: standardData.problem.difficulty || 'Medium',
+      questionFrontendId: standardData.problem.problemId,
+      likes: standardData.problem.likes || 0,
+      dislikes: standardData.problem.dislikes || 0
+    },
+    notes: standardData.leetcodeData?.notes || '',
+    user: standardData.leetcodeData?.user || {
+      username: 'user',
+      profile: { realName: 'User', userAvatar: '' }
+    }
+  } as Submission;
 }
 
 // Helper function to validate submission timestamp

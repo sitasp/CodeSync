@@ -7,7 +7,7 @@ export function injectAPIInterceptor() {
   try {
     // Create script element that loads the standalone interceptor
     const script = document.createElement('script');
-    script.src = chrome.runtime.getURL('static/scripts/api-interceptor-standalone.js');
+    script.src = chrome.runtime.getURL('static/scripts/provider/leetcode/api-interceptor-standalone.js');
     script.type = 'text/javascript';
     
     // Inject the script into the page context
