@@ -33,7 +33,7 @@
     },
     {
       "matches": ["https://leetcode.com/*"],
-      "js": ["static/scripts/providers/leetcode/lc-interceptor-script.js"],
+      "js": ["static/scripts/leetcode.js"],
       "run_at": "document_start"
     }
   ]
