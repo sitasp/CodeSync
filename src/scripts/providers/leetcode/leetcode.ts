@@ -8,6 +8,8 @@ const github = new GithubHandler();
 
 console.log('🎬 LeetCode content script starting...');
 
+// DEPRECATED
+
 // Inject API interceptor when script loads
 console.log('🎯 About to inject API interceptor...');
 injectAPIInterceptor();
