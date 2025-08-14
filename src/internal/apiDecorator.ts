@@ -69,9 +69,18 @@ export function ApiInterceptor(pattern: string | RegExp) {
  * Call this once right after `new YourHandlers()`.
  */
 export function bindDecorators(instance: any) {
+  console.log('🔗 [ApiDecorator] Binding decorators for instance:', instance.constructor.name);
+  
   const ctor = instance?.constructor as { __pendingDecorators?: RegistryEntry[] };
   const pending = ctor.__pendingDecorators || [];
+  
+  console.log(`📋 [ApiDecorator] Found ${pending.length} pending decorators:`, pending.map(p => ({ pattern: p.pattern, method: p.methodName })));
+  
   for (const entry of pending) {
-    decoratorRegistry.push({ ...entry, instance });
+    const boundEntry = { ...entry, instance };
+    decoratorRegistry.push(boundEntry);
+    console.log(`✅ [ApiDecorator] Registered: ${entry.pattern} -> ${entry.methodName}`);
   }
+  
+  console.log(`📊 [ApiDecorator] Total registered handlers: ${decoratorRegistry.length}`);
 }

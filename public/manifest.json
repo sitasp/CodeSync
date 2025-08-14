@@ -30,6 +30,11 @@
       "matches": ["https://github.com/*"],
       "js": ["static/scripts/authorize-github.js"],
       "run_at": "document_start"
+    },
+    {
+      "matches": ["https://leetcode.com/*"],
+      "js": ["static/scripts/providers/leetcode/lc-interceptor-script.js"],
+      "run_at": "document_start"
     }
   ]
 }

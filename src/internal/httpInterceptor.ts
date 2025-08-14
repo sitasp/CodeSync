@@ -33,26 +33,46 @@ export class HttpInterceptor {
   }
 
   private hasAnyMatch(url: string): boolean {
+    console.log(`🔍 [HttpInterceptor] Checking URL: ${url}`);
+    console.log(`📝 [HttpInterceptor] Available patterns:`, decoratorRegistry.map(e => ({ pattern: e.pattern, isRegex: e.isRegex })));
+    
     for (const e of decoratorRegistry) {
-      if (urlMatches(e.pattern, e.isRegex, url)) return true;
+      const matches = urlMatches(e.pattern, e.isRegex, url);
+      console.log(`🎯 [HttpInterceptor] Pattern "${e.pattern}" matches "${url}": ${matches}`);
+      if (matches) return true;
     }
+    console.log(`❌ [HttpInterceptor] No matches found for URL: ${url}`);
     return false;
   }
 
   private processResponse(requestContext: RequestContext, responseContext: ResponseContext) {
+    console.log(`🔄 [HttpInterceptor] Processing response for: ${requestContext.path}`);
+    console.log(`📊 [HttpInterceptor] Response status: ${responseContext.statusCode}`);
+    
     // Call ONLY matching decorator handlers
     for (const e of decoratorRegistry) {
-      if (!e.instance) continue;
-      if (!urlMatches(e.pattern, e.isRegex, requestContext.path || '')) continue;
+      if (!e.instance) {
+        console.log(`⚠️ [HttpInterceptor] No instance for pattern: ${e.pattern}`);
+        continue;
+      }
+      
+      const matches = urlMatches(e.pattern, e.isRegex, requestContext.path || '');
+      console.log(`🎯 [HttpInterceptor] Pattern "${e.pattern}" matches "${requestContext.path}": ${matches}`);
+      
+      if (!matches) continue;
+      
       try {
+        console.log(`📞 [HttpInterceptor] Calling handler: ${e.methodName}`);
         const fn = (e.instance as any)[e.methodName];
         if (typeof fn === 'function') {
           Promise.resolve(fn.call(e.instance, { requestContext, responseContext })).catch(err => {
-            console.error(`[LeetSync] Handler error in ${e.methodName}:`, err);
+            console.error(`❌ [LeetSync] Handler error in ${e.methodName}:`, err);
           });
+        } else {
+          console.error(`❌ [HttpInterceptor] Method ${e.methodName} is not a function`);
         }
       } catch (err) {
-        console.error('[LeetSync] Error dispatching handler', err);
+        console.error('❌ [LeetSync] Error dispatching handler', err);
       }
     }
   }
