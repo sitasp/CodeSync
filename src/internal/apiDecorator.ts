@@ -6,11 +6,6 @@
 import RequestContext from './requestContext';
 import ResponseContext from './responseContext';
 
-export type InterceptorHandler = (contexts: {
-  requestContext: RequestContext;
-  responseContext: ResponseContext;
-}) => void | Promise<void>;
-
 export interface RegistryEntry {
   pattern: string;                // simple substring or regex source
   isRegex: boolean;               // whether pattern is regex
