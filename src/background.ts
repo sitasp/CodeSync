@@ -1,19 +1,13 @@
-export {};
+import { handlers } from './handlers/remoteHandlerMap';
+
+export {}; // Mark as module
 
 // This service worker is completely decoupled from the page scripts.
 // It does not import any code that might reference the 'window' object.
 
 console.log('[Service Worker] Initializing...');
 
-// Handler implementations are defined directly here or in SW-specific files.
-const handlers: { [key: string]: (contexts: any) => void } = {
-  'LeetCodeApiHandlers:onSubmissionSubmit': ({ requestContext, responseContext }) => {
-    console.log('✅ [Service Worker] onSubmissionSubmit handler executed.');
-    console.log('🎯 [SUBMIT API] Request:', requestContext);
-    console.log('📨 [SUBMIT API] Response:', responseContext);
-    // TODO: Add logic here to save this data or sync it to GitHub.
-  },
-};
+// The handlers map is now imported from remoteHandlerMap.ts
 
 // This listener handles messages forwarded from the content script bridge.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
