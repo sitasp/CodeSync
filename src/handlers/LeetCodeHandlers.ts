@@ -57,22 +57,10 @@ export class LeetCodeApiHandlers {
   // Intercept submission endpoint
   @ApiInterceptor(/\/problems\/[^\/]+\/submit\//, { remote: true })
   async onSubmissionSubmit({ requestContext, responseContext }: any) {
-    console.log('🎯 [SUBMIT API] Request:', {
-      url: requestContext.path,
-      method: requestContext.method,
-      headers: requestContext.headers,
-      body: requestContext.payload,
-    });
-
-    console.log('📨 [SUBMIT API] Response:', {
-      status: responseContext.statusCode,
-      headers: responseContext.headers,
-      data: responseContext.payload,
-    });
   }
 
   // Intercept GraphQL responses, narrow down using a regex for op name if needed
-  @ApiInterceptor(/graphql/, {remote: true}) // broaden or specialize as you like
+  @ApiInterceptor(/graphql/) // broaden or specialize as you like
   async onGraphQL({ requestContext, responseContext }: any) {
     console.log('🎯 [GraphQL API] Request:', {
       url: requestContext.path,
