@@ -32,8 +32,10 @@
       "run_at": "document_start"
     },
     {
-      "matches": ["https://leetcode.com/*"],
-      "js": ["static/scripts/leetcode-bridge.js"],
+      "matches": [
+        "https://leetcode.com/*"
+      ],
+      "js": ["static/scripts/remote-bridge.js"],
       "run_at": "document_start"
     }
   ]
