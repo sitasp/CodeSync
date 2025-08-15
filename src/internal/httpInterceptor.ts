@@ -34,7 +34,13 @@ export class HttpInterceptor {
 
   private hasAnyMatch(url: string): boolean {
     console.log(`🔍 [HttpInterceptor] Checking URL: ${url}`);
-    console.log(`📝 [HttpInterceptor] Available patterns:`, decoratorRegistry.map(e => ({ pattern: e.pattern, isRegex: e.isRegex })));
+    console.log(`📝 [HttpInterceptor] Registry size: ${decoratorRegistry.length}`);
+    console.log(`📝 [HttpInterceptor] Available patterns:`, decoratorRegistry.map(e => ({ 
+      pattern: e.pattern, 
+      isRegex: e.isRegex, 
+      methodName: e.methodName,
+      hasInstance: !!e.instance
+    })));
     
     for (const e of decoratorRegistry) {
       const matches = urlMatches(e.pattern, e.isRegex, url);
@@ -82,9 +88,11 @@ export class HttpInterceptor {
     const self = this;
 
     (window as any).fetch = function (...args: Parameters<typeof fetch>) {
+      console.log('🟢 [FETCH] Called with:', args[0]);
       const input = args[0];
       const init = args[1] || {};
       const url = self.normalizeUrl(input);
+      console.log('🟢 [FETCH] Normalized URL:', url);
 
       // Fast-path: if no handlers match this URL, skip all work
       if (!self.hasAnyMatch(url)) {
@@ -147,6 +155,7 @@ export class HttpInterceptor {
     };
 
     (XMLHttpRequest.prototype as any).send = function (body?: any) {
+      console.log('🟡 [XHR] Called with URL:', (this as any).__ls_url);
       const xhr = this as XMLHttpRequest & { __ls_url?: string; __ls_method?: string };
 
       xhr.addEventListener('load', function () {

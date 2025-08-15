@@ -125,7 +125,7 @@ chrome.webRequest.onCompleted.addListener(
       
       // Check cache for submission data (much shorter delay since data should already be cached)
       setTimeout(() => {
-        const cachedData = submissionCache.get(questionSlug);
+        const cachedData = submissionCache?.get?.(questionSlug);
         
         if (cachedData) {
           console.log(`💾 Found cached submission data for: ${questionSlug}`);

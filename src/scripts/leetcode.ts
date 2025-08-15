@@ -50,6 +50,23 @@ class LeetCodeApiHandlers {
     }
   }
 
+  // Intercept submission endpoint
+  @ApiInterceptor(/\/problems\/[^\/]+\/submit\//)
+  async onSubmissionSubmit({ requestContext, responseContext }: any) {
+    console.log('🎯 [SUBMIT API] Request:', {
+      url: requestContext.path,
+      method: requestContext.method,
+      headers: requestContext.headers,
+      body: requestContext.payload
+    });
+    
+    console.log('📨 [SUBMIT API] Response:', {
+      status: responseContext.statusCode,
+      headers: responseContext.headers,
+      data: responseContext.payload
+    });
+  }
+
   // Intercept GraphQL responses, narrow down using a regex for op name if needed
   @ApiInterceptor(/graphql/) // broaden or specialize as you like
   async onGraphQL({ requestContext, responseContext }: any) {
@@ -102,12 +119,6 @@ class LeetCodeApiHandlers {
     console.log('✅ [LeetSync] lcInterceptor initialized successfully');
     console.log('🔍 Checking if fetch is patched:', typeof window.fetch);
     console.log('🔍 Checking if XMLHttpRequest is patched:', typeof XMLHttpRequest);
-    
-    // Test fetch interception
-    setTimeout(() => {
-      console.log('🧪 Testing fetch interception...');
-      fetch('/api/test').catch(() => console.log('🧪 Test fetch completed (expected to fail)'));
-    }, 1000);
     
   } catch (e) {
     console.error('❌ [LeetSync] bootstrap error', e);
