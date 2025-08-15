@@ -1,3 +1,25 @@
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (
+    changeInfo.status === 'complete' &&
+    tab.url &&
+    tab.url.includes('leetcode.com')
+  ) {
+    console.log('✅ LeetCode tab detected. Injecting script...');
+    chrome.scripting
+      .executeScript({
+        target: { tabId: tabId },
+        files: ['static/scripts/leetcode.js'],
+        world: 'MAIN', // Inject into the main page context
+      })
+      .then(() => {
+        console.log('✅ Injected leetcode.js into the main world.');
+      })
+      .catch((err) => {
+        console.error('❌ Failed to inject leetcode.js:', err);
+      });
+  }
+});
+
 // SubmissionCache class for managing cached submission data
 class SubmissionCache {
   private cache = new Map<string, {
@@ -109,43 +131,4 @@ export const sendMessageToContentScript = (type: string, data: any) => {
   });
 };
 
-// Listen for submit request - now uses cached data instead of API calls
-chrome.webRequest.onCompleted.addListener(
-  (details: chrome.webRequest.WebResponseCacheDetails) => {
-    // Check if it's a POST request to submit the code
-    if (
-      details.method === 'POST' &&
-      details.url.startsWith('https://leetcode.com/problems/') &&
-      details.url.includes('/submit/')
-    ) {
-      const questionSlug = details.url.match(/\/problems\/(.*)\/submit/)?.[1] ?? null;
-      if (!questionSlug) return;
-      
-      console.log(`🎯 Submission detected for: ${questionSlug}`);
-      
-      // Check cache for submission data (much shorter delay since data should already be cached)
-      setTimeout(() => {
-        const cachedData = submissionCache?.get?.(questionSlug);
-        
-        if (cachedData) {
-          console.log(`💾 Found cached submission data for: ${questionSlug}`);
-          // Send message to content script to process the cached submission
-          sendMessageToContentScript('process-cached-submission', { 
-            questionSlug,
-            submissionData: cachedData.submissionData,
-            timestamp: cachedData.timestamp
-          });
-        } else {
-          console.log(`❌ No cached data found for: ${questionSlug}`);
-          // Fallback: still try to get submission via old method if cache miss
-          sendMessageToContentScript('get-submission-fallback', { questionSlug });
-        }
-      }, 1500); // Reduced from 5000ms to 1500ms since we're using cached data
-    }
-  },
-  {
-    urls: ['https://leetcode.com/problems/*/submit/'],
-    types: ['xmlhttprequest'],
-  },
-);
 export {};

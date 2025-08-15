@@ -14,7 +14,7 @@
     "256": "logo256.png",
     "512": "logo512.png"
   },
-  "permissions": ["tabs", "storage", "cookies", "unlimitedStorage", "webRequest"],
+  "permissions": ["tabs", "storage", "cookies", "unlimitedStorage", "scripting"],
   "host_permissions": ["https://leetcode.com/*"],
   "web_accessible_resources": [
     {
@@ -29,11 +29,6 @@
     {
       "matches": ["https://github.com/*"],
       "js": ["static/scripts/authorize-github.js"],
-      "run_at": "document_start"
-    },
-    {
-      "matches": ["https://leetcode.com/*"],
-      "js": ["static/scripts/leetcode.js"],
       "run_at": "document_start"
     }
   ]

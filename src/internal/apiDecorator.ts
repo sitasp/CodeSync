@@ -83,12 +83,4 @@ export function bindDecorators(instance: any) {
   }
   
   console.log(`📊 [ApiDecorator] Total registered handlers: ${decoratorRegistry.length}`);
-  
-  // Debug: Test URL matching manually
-  console.log('🧪 [DEBUG] Testing URL matching manually:');
-  const testUrl = 'https://leetcode.com/problems/two-sum/submit/';
-  for (const entry of decoratorRegistry) {
-    const matches = urlMatches(entry.pattern, entry.isRegex, testUrl);
-    console.log(`🧪 Pattern "${entry.pattern}" (isRegex: ${entry.isRegex}) matches "${testUrl}": ${matches}`);
-  }
 }

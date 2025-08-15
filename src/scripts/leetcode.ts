@@ -102,19 +102,18 @@ class LeetCodeApiHandlers {
   console.log('🏠 Current hostname:', window.location.hostname);
   
   try {
-    // Start interceptor first
+    // Instantiate handler class and bind decorators FIRST
+    console.log('🏗️ Creating LeetCode handlers and binding decorators...');
+    const handlers = new LeetCodeApiHandlers();
+    bindDecorators(handlers);
+    console.log('🔗 Decorators bound.');
+
+    // Now, create and start the interceptor
     console.log('📡 Creating HTTP interceptor...');
     const http = new HttpInterceptor();
     
     console.log('🔌 Starting HTTP interceptor...');
     http.start();
-    
-    // Instantiate handler class and bind its decorators to this instance
-    console.log('🏗️ Creating LeetCode handlers...');
-    const handlers = new LeetCodeApiHandlers();
-    
-    console.log('🔗 Binding decorators...');
-    bindDecorators(handlers);
     
     console.log('✅ [LeetSync] lcInterceptor initialized successfully');
     console.log('🔍 Checking if fetch is patched:', typeof window.fetch);
