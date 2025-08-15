@@ -42,14 +42,17 @@ export function urlMatches(pattern: string, isRegex: boolean, url: string): bool
  *   @ApiInterceptor('/submissions/detail')
  *   onSubmission(resp) { ... }
  *
+ * To execute in the service worker:
+ *   @ApiInterceptor('/submissions/detail', { remote: true })
+ *
  * Regex mode:
  *   @ApiInterceptor(/graphql\\?operationName=xxxx/)
  */
-export function ApiInterceptor(pattern: string | RegExp) {
+export function ApiInterceptor(pattern: string | RegExp, options: { remote?: boolean } = {}) {
   const isRegex = pattern instanceof RegExp;
   const pat = isRegex ? (pattern as RegExp).source : String(pattern);
 
-  return function (target: any, propertyKey: string) {
+  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
     // We only push metadata here. The concrete instance is bound later
     // when the owning class is instantiated.
     const ctor = target.constructor as { __pendingDecorators?: RegistryEntry[] };
@@ -61,8 +64,51 @@ export function ApiInterceptor(pattern: string | RegExp) {
       instance: null,
       methodName: propertyKey,
     } as RegistryEntry);
+
+    // If the 'remote' option is true, we replace the decorated method
+    // with a proxy that posts a message to the window.
+    if (options.remote) {
+      descriptor.value = function (contexts: {
+        requestContext: RequestContext;
+        responseContext: ResponseContext;
+      }) {
+        // Use a static className property if available, falling back to constructor.name.
+        // This provides a stable identifier that survives minification.
+        const className = (this.constructor as any).className || this.constructor.name;
+
+        console.log(
+          `[ApiDecorator] Posting message for remote handler ${className}.${propertyKey}.`,
+        );
+
+        const serializableContexts = {
+          requestContext: {
+            headers: contexts.requestContext.headers,
+            payload: contexts.requestContext.payload,
+            queryParams: contexts.requestContext.queryParams,
+            path: contexts.requestContext.path,
+            method: contexts.requestContext.method,
+            urlParams: contexts.requestContext.urlParams,
+          },
+          responseContext: {
+            headers: contexts.responseContext.headers,
+            payload: contexts.responseContext.payload,
+            statusCode: contexts.responseContext.statusCode,
+          },
+        };
+
+        window.postMessage(
+          {
+            type: 'FROM_PAGE_SCRIPT',
+            handlerId: `${className}:${propertyKey}`,
+            contexts: serializableContexts,
+          },
+          window.location.origin,
+        );
+      };
+    }
   };
 }
+
 
 /**
  * Bind pending decorator entries on a class constructor to a concrete instance.
@@ -70,17 +116,26 @@ export function ApiInterceptor(pattern: string | RegExp) {
  */
 export function bindDecorators(instance: any) {
   console.log('🔗 [ApiDecorator] Binding decorators for instance:', instance.constructor.name);
-  
+
   const ctor = instance?.constructor as { __pendingDecorators?: RegistryEntry[] };
-  const pending = ctor.__pendingDecorators || [];
-  
+  const pending = ctor?.__pendingDecorators;
+
+  if (!pending || !pending.length) {
+    return; // No decorators to bind
+  }
+
   console.log(`📋 [ApiDecorator] Found ${pending.length} pending decorators:`, pending.map(p => ({ pattern: p.pattern, method: p.methodName })));
-  
+
   for (const entry of pending) {
     const boundEntry = { ...entry, instance };
     decoratorRegistry.push(boundEntry);
     console.log(`✅ [ApiDecorator] Registered: ${entry.pattern} -> ${entry.methodName}`);
   }
-  
+
+  // Important: Clear pending decorators from the class constructor.
+  // This prevents accidental re-registration if bindDecorators is called
+  // with multiple different instances of the same handler class.
+  ctor.__pendingDecorators = [];
+
   console.log(`📊 [ApiDecorator] Total registered handlers: ${decoratorRegistry.length}`);
 }

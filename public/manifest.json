@@ -30,6 +30,11 @@
       "matches": ["https://github.com/*"],
       "js": ["static/scripts/authorize-github.js"],
       "run_at": "document_start"
+    },
+    {
+      "matches": ["https://leetcode.com/*"],
+      "js": ["static/scripts/leetcode-bridge.js"],
+      "run_at": "document_start"
     }
   ]
 }

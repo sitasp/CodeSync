@@ -105,9 +105,19 @@ export class HttpInterceptor {
           }
 
           // Create RequestContext instance
+          const requestHeaders: Record<string, string> = {};
+          if (init.headers) {
+            // Normalize headers (which can be a Headers object, an array, or a plain object)
+            // into a simple Record<string, string> to ensure it's cloneable.
+            const tempHeaders = new Headers(init.headers);
+            tempHeaders.forEach((value, key) => {
+              requestHeaders[key] = value;
+            });
+          }
+
           const requestContext = new RequestContext({
             method: init.method || 'GET',
-            headers: (init.headers as any) || {},
+            headers: requestHeaders,
             body: init.body,
             path: url
           });

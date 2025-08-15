@@ -11,6 +11,7 @@ module.exports = {
           ].filter(Boolean),
           leetcode: './src/scripts/leetcode.ts',
           background: './src/background.ts',
+          'leetcode-bridge': './src/scripts/leetcode-bridge.ts',
           'authorize-github': './src/scripts/authorize-github.ts'
         },
         output: {
