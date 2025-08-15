@@ -33,41 +33,34 @@ export class HttpInterceptor {
   }
 
   private hasAnyMatch(url: string): boolean {
-    console.log(`🔍 [HttpInterceptor] Checking URL: ${url}`);
-    console.log(`📝 [HttpInterceptor] Registry size: ${decoratorRegistry.length}`);
-    console.log(`📝 [HttpInterceptor] Available patterns:`, decoratorRegistry.map(e => ({ 
-      pattern: e.pattern, 
-      isRegex: e.isRegex, 
-      methodName: e.methodName,
-      hasInstance: !!e.instance
-    })));
+    // console.log(`📝 [HttpInterceptor] Registry size: ${decoratorRegistry.length}`);
+    // console.log(`📝 [HttpInterceptor] Available patterns:`, decoratorRegistry.map(e => ({
+    //   pattern: e.pattern,
+    //   isRegex: e.isRegex,
+    //   methodName: e.methodName,
+    //   hasInstance: !!e.instance
+    // })));
     
     for (const e of decoratorRegistry) {
       const matches = urlMatches(e.pattern, e.isRegex, url);
-      console.log(`🎯 [HttpInterceptor] Pattern "${e.pattern}" matches "${url}": ${matches}`);
       if (matches) return true;
     }
-    console.log(`❌ [HttpInterceptor] No matches found for URL: ${url}`);
     return false;
   }
 
   private processResponse(requestContext: RequestContext, responseContext: ResponseContext) {
-    console.log(`🔄 [HttpInterceptor] Processing response for: ${requestContext.path}`);
-    console.log(`📊 [HttpInterceptor] Response status: ${responseContext.statusCode}`);
-    
     // Call ONLY matching decorator handlers
     for (const e of decoratorRegistry) {
       if (!e.instance) {
-        console.log(`⚠️ [HttpInterceptor] No instance for pattern: ${e.pattern}`);
         continue;
       }
       
       const matches = urlMatches(e.pattern, e.isRegex, requestContext.path || '');
-      console.log(`🎯 [HttpInterceptor] Pattern "${e.pattern}" matches "${requestContext.path}": ${matches}`);
       
       if (!matches) continue;
       
       try {
+        console.log(`🎯 [HttpInterceptor] Pattern "${e.pattern}" matches "${requestContext.path}": ${matches}`);
         console.log(`📞 [HttpInterceptor] Calling handler: ${e.methodName}`);
         const fn = (e.instance as any)[e.methodName];
         if (typeof fn === 'function') {
@@ -88,11 +81,9 @@ export class HttpInterceptor {
     const self = this;
 
     (window as any).fetch = function (...args: Parameters<typeof fetch>) {
-      console.log('🟢 [FETCH] Called with:', args[0]);
       const input = args[0];
       const init = args[1] || {};
       const url = self.normalizeUrl(input);
-      console.log('🟢 [FETCH] Normalized URL:', url);
 
       // Fast-path: if no handlers match this URL, skip all work
       if (!self.hasAnyMatch(url)) {
@@ -155,7 +146,6 @@ export class HttpInterceptor {
     };
 
     (XMLHttpRequest.prototype as any).send = function (body?: any) {
-      console.log('🟡 [XHR] Called with URL:', (this as any).__ls_url);
       const xhr = this as XMLHttpRequest & { __ls_url?: string; __ls_method?: string };
 
       xhr.addEventListener('load', function () {
