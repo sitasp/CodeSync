@@ -13,13 +13,6 @@ const handlers: { [key: string]: (contexts: any) => void } = {
     console.log('📨 [SUBMIT API] Response:', responseContext);
     // TODO: Add logic here to save this data or sync it to GitHub.
   },
-
-  // To add more remote handlers, add their implementation here, for example:
-  /*
-  'LeetCodeApiHandlers:onSomeOtherRemoteMethod': ({ requestContext, responseContext }) => {
-    // ... logic for other handler ...
-  }
-  */
 };
 
 // This listener handles messages forwarded from the content script bridge.

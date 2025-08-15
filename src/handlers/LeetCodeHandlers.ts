@@ -72,7 +72,7 @@ export class LeetCodeApiHandlers {
   }
 
   // Intercept GraphQL responses, narrow down using a regex for op name if needed
-  @ApiInterceptor(/graphql/) // broaden or specialize as you like
+  @ApiInterceptor(/graphql/, {remote: true}) // broaden or specialize as you like
   async onGraphQL({ requestContext, responseContext }: any) {
     console.log('🎯 [GraphQL API] Request:', {
       url: requestContext.path,
@@ -86,20 +86,5 @@ export class LeetCodeApiHandlers {
       headers: responseContext.headers,
       data: responseContext.payload,
     });
-
-    // If the body contains operationName you care about, filter here
-    try {
-      const data = responseContext.payload;
-      // Common LeetCode GQL shape: { data: { question: {...} } }
-      if (data && typeof data === 'object' && 'data' in data) {
-        // Forward for debugging/inspection in your background page
-        if (typeof window !== 'undefined') {
-          window.postMessage(
-          { type: 'API_RESPONSE', provider: 'LeetCode', data, url: requestContext.path },
-          '*',
-        );
-        }
-      }
-    } catch {}
   }
 }
