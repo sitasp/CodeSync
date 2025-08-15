@@ -17,34 +17,37 @@ class LeetCodeApiHandlers {
     console.log('🎯 [REST API] Submission Detail Request:', {
       url: requestContext.path,
       method: requestContext.method,
-      headers: requestContext.headers,
-      body: requestContext.payload
     });
-    
+
     console.log('📨 [REST API] Submission Detail Response:', {
       status: responseContext.statusCode,
-      headers: responseContext.headers,
-      data: responseContext.payload
+      data: responseContext.body,
     });
 
     // Example: extract minimal fields if present
     try {
-      const submissionId = /submissions\/detail\/(\d+)/.exec(requestContext.path)?.[1];
-      const data = responseContext.payload;
-      const language = data?.lang || data?.submission?.lang || data?.programmingLanguage;
+      const submissionId = /submissions\/detail\/(\d+)/.exec(
+        requestContext.path,
+      )?.[1];
+      const data = responseContext.body;
+      const language =
+        data?.lang || data?.submission?.lang || data?.programmingLanguage;
       const status = data?.statusDisplay || data?.status || data?.state;
 
-      window.postMessage({
-        type: 'SUBMISSION_DATA',
-        provider: 'LeetCode',
-        data: {
-          submissionId,
-          language,
-          status,
-          raw: data,
+      window.postMessage(
+        {
+          type: 'SUBMISSION_DATA',
+          provider: 'LeetCode',
+          data: {
+            submissionId,
+            language,
+            status,
+            raw: data,
+          },
+          timestamp: Date.now(),
         },
-        timestamp: Date.now(),
-      }, '*');
+        '*',
+      );
     } catch (e) {
       console.warn('[LeetSync] Failed to parse submission detail', e);
     }
@@ -56,14 +59,11 @@ class LeetCodeApiHandlers {
     console.log('🎯 [SUBMIT API] Request:', {
       url: requestContext.path,
       method: requestContext.method,
-      headers: requestContext.headers,
-      body: requestContext.payload
     });
-    
+
     console.log('📨 [SUBMIT API] Response:', {
       status: responseContext.statusCode,
-      headers: responseContext.headers,
-      data: responseContext.payload
+      data: responseContext.body,
     });
   }
 
@@ -73,23 +73,23 @@ class LeetCodeApiHandlers {
     console.log('🎯 [GraphQL API] Request:', {
       url: requestContext.path,
       method: requestContext.method,
-      headers: requestContext.headers,
-      body: requestContext.payload
     });
-    
+
     console.log('📨 [GraphQL API] Response:', {
       status: responseContext.statusCode,
-      headers: responseContext.headers,
-      data: responseContext.payload
+      data: responseContext.body,
     });
-    
+
     // If the body contains operationName you care about, filter here
     try {
-      const data = responseContext.payload;
+      const data = responseContext.body;
       // Common LeetCode GQL shape: { data: { question: {...} } }
       if (data && typeof data === 'object' && 'data' in data) {
         // Forward for debugging/inspection in your background page
-        window.postMessage({ type: 'API_RESPONSE', provider: 'LeetCode', data, url: requestContext.path }, '*');
+        window.postMessage(
+          { type: 'API_RESPONSE', provider: 'LeetCode', data, url: requestContext.path },
+          '*',
+        );
       }
     } catch {}
   }
@@ -98,9 +98,7 @@ class LeetCodeApiHandlers {
 // ---- Bootstrap (runs when script is injected on leetcode.com) ----
 (function bootstrap() {
   console.log('🚀 LeetCode API Interceptor script starting...');
-  console.log('🌍 Current URL:', window.location.href);
-  console.log('🏠 Current hostname:', window.location.hostname);
-  
+
   try {
     // Instantiate handler class and bind decorators FIRST
     console.log('🏗️ Creating LeetCode handlers and binding decorators...');
@@ -111,14 +109,11 @@ class LeetCodeApiHandlers {
     // Now, create and start the interceptor
     console.log('📡 Creating HTTP interceptor...');
     const http = new HttpInterceptor();
-    
+
     console.log('🔌 Starting HTTP interceptor...');
     http.start();
-    
+
     console.log('✅ [LeetSync] lcInterceptor initialized successfully');
-    console.log('🔍 Checking if fetch is patched:', typeof window.fetch);
-    console.log('🔍 Checking if XMLHttpRequest is patched:', typeof XMLHttpRequest);
-    
   } catch (e) {
     console.error('❌ [LeetSync] bootstrap error', e);
     if (e instanceof Error) {
