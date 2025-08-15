@@ -1,4 +1,4 @@
-import { ApiInterceptor } from '../internal/apiDecorator';
+import { ApiInterceptor } from '../../internal/apiDecorator';
 
 /**
  * LeetCode-specific handlers. Add new endpoints by decorating methods.

@@ -1,6 +1,6 @@
 // src/handlers/remoteHandlerMap.ts
 
-import { LeetCodeRemoteHandlers } from './LeetCodeRemoteHandlers';
+import { LeetCodeRemoteHandlers } from './leetcode/LeetCodeRemoteHandlers';
 
 // Instantiate the remote handlers class
 const leetcodeRemoteHandlers = new LeetCodeRemoteHandlers();

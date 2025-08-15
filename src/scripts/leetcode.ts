@@ -3,7 +3,7 @@
 
 import { bindDecorators } from '../internal/apiDecorator';
 import { HttpInterceptor } from '../internal/httpInterceptor';
-import { LeetCodeApiHandlers } from '../handlers/LeetCodeHandlers';
+import { LeetCodeApiHandlers } from '../handlers/leetcode/LeetCodeHandlers';
 
 export {}; // Make this a module
 

@@ -1,5 +1,5 @@
 import { handlers } from './handlers/remoteHandlerMap';
-import { handleLeetCodeTabUpdate } from './handlers/leetcodeTabHandler';
+import { handleLeetCodeTabUpdate } from './handlers/leetcode/leetcodeTabHandler';
 
 export {}; // Mark as module
 
