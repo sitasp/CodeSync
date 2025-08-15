@@ -1,4 +1,5 @@
 import { handlers } from './handlers/remoteHandlerMap';
+import { handleLeetCodeTabUpdate } from './handlers/leetcodeTabHandler';
 
 export {}; // Mark as module
 
@@ -33,40 +34,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 // This logic injects the page script into LeetCode tabs.
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (
-    changeInfo.status === 'complete' &&
-    tab.url &&
-    tab.url.includes('leetcode.com')
-  ) {
-    // Prevent script from being injected multiple times
-    try {
-      const results = await chrome.scripting.executeScript({
-        target: { tabId },
-        func: () => window.hasOwnProperty('__leetsync_injected'),
-      });
+chrome.tabs.onUpdated.addListener(handleLeetCodeTabUpdate);
 
-      if (!results || !results[0] || !results[0].result) {
-        console.log('✅ LeetCode tab detected. Injecting script...');
-        await chrome.scripting.executeScript({
-          target: { tabId: tabId },
-          func: () => (window as any).__leetsync_injected = true,
-        });
-        await chrome.scripting.executeScript({
-          target: { tabId: tabId },
-          files: ['static/scripts/leetcode.js'],
-          world: 'MAIN',
-        });
-        console.log('✅ Injected leetcode.js into the main world.');
-      }
-    } catch (e) {
-      if (
-        e instanceof Error &&
-        !e.message.includes('Cannot access a chrome:// URL') &&
-        !e.message.includes('The extensions gallery cannot be scripted')
-      ) {
-        console.error('❌ Error injecting script:', e);
-      }
-    }
-  }
-});
+// Future Listeners can be added here for other sites or functionalities.
