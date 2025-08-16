@@ -5,6 +5,7 @@
 // It should not contain any references to the 'window' object.
 
 import { RemoteClass, RemoteMethod } from '../../internal/remoteDecorators';
+import { graphQLQueryHandlers } from './graphqlQueries';
 
 @RemoteClass('LeetCodeApiHandlers')
 export class LeetCodeRemoteHandlers {
@@ -17,8 +18,18 @@ export class LeetCodeRemoteHandlers {
 
   @RemoteMethod()
   async onGraphQL({ requestContext, responseContext }: any) {
-    console.log('✅ [Service Worker] remote onGraphQL handler executed.');
-    console.log('🎯 [GRAPH QL API] Remote Request:', requestContext);
-    console.log('📨 [GRAPH QL API] Remote Response:', responseContext);
+    try {
+      const payload = JSON.parse(requestContext.payload);
+      const operationName = payload.operationName;
+
+      if (graphQLQueryHandlers.has(operationName)) {
+        const handler = graphQLQueryHandlers.get(operationName);
+        handler?.(requestContext, responseContext);
+      } else {
+        // console.log(`Skipping unhandled GraphQL query: ${operationName}`);
+      }
+    } catch (e) {
+      console.error('Error handling GraphQL request:', e);
+    }
   }
-}
+  }
