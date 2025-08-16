@@ -94,14 +94,17 @@ export class HttpInterceptor {
         try {
           const clone = resp.clone();
           let data: any;
-          const ct = clone.headers.get('content-type') || '';
-          if (ct.includes('application/json')) {
+          try {
             data = await clone.json();
-          } else if (ct.startsWith('text/')) {
-            data = await clone.text();
-          } else {
-            // Unsupported type; skip to avoid heavy conversions
-            return resp;
+          } catch (e) {
+            // If JSON parsing fails, try to get it as plain text.
+            try {
+              data = await clone.text();
+            } catch (e) {
+              // If both fail, we can't do much more.
+              console.error("Could not read response body as JSON or text.", e);
+              return resp;
+            }
           }
 
           // Create RequestContext instance
@@ -158,22 +161,28 @@ export class HttpInterceptor {
     (XMLHttpRequest.prototype as any).send = function (body?: any) {
       const xhr = this as XMLHttpRequest & { __ls_url?: string; __ls_method?: string };
 
-      xhr.addEventListener('load', function () {
+      xhr.addEventListener('load', async function () {
         const url = (xhr as any).__ls_url || '';
         if (!self.hasAnyMatch(url)) return; // skip if nothing matches
         if (xhr.status < 200 || xhr.status >= 300) return;
 
         try {
-          let data: any = null;
-          // Prefer response if responseType is json, else parse text
-          if ((xhr as any).responseType === 'json') {
-            data = (xhr as any).response;
-          } else if ((xhr as any).responseType === '' || (xhr as any).responseType === 'text') {
-            const txt = (xhr as any).responseText;
+          let data: any;
+          const response = (xhr as any).response;
+
+          if (response instanceof Blob) {
+            const text = await response.text();
             try {
-              data = JSON.parse(txt);
-            } catch {
-              data = txt; // non-JSON text
+              data = JSON.parse(text);
+            } catch (e) {
+              data = text;
+            }
+          } else {
+            // Fallback for non-blob responses
+            try {
+              data = JSON.parse((xhr as any).responseText);
+            } catch (e) {
+              data = response || (xhr as any).responseText;
             }
           }
 
