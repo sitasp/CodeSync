@@ -20,7 +20,7 @@ export class HttpInterceptor {
     this.patchFetch();
     this.patchXHR();
     this.active = true;
-    console.log('[LeetSync] HTTP Interceptor started');
+    console.log('[CodeSync] HTTP Interceptor started');
   }
 
   stop() {
@@ -29,7 +29,7 @@ export class HttpInterceptor {
     if (this.originalXHROpen) (XMLHttpRequest.prototype as any).open = this.originalXHROpen;
     if (this.originalXHRSend) (XMLHttpRequest.prototype as any).send = this.originalXHRSend;
     this.active = false;
-    console.log('[LeetSync] HTTP Interceptor stopped');
+    console.log('[CodeSync] HTTP Interceptor stopped');
   }
 
   private hasAnyMatch(url: string): boolean {
@@ -65,13 +65,13 @@ export class HttpInterceptor {
         const fn = (e.instance as any)[e.methodName];
         if (typeof fn === 'function') {
           Promise.resolve(fn.call(e.instance, { requestContext, responseContext })).catch(err => {
-            console.error(`❌ [LeetSync] Handler error in ${e.methodName}:`, err);
+            console.error(`❌ [CodeSync] Handler error in ${e.methodName}:`, err);
           });
         } else {
           console.error(`❌ [HttpInterceptor] Method ${e.methodName} is not a function`);
         }
       } catch (err) {
-        console.error('❌ [LeetSync] Error dispatching handler', err);
+        console.error('❌ [CodeSync] Error dispatching handler', err);
       }
     }
   }

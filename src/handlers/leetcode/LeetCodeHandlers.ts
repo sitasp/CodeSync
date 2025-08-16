@@ -50,7 +50,7 @@ export class LeetCodeApiHandlers {
       );
       }
     } catch (e) {
-      console.warn('[LeetSync] Failed to parse submission detail', e);
+      console.warn('[CodeSync] Failed to parse submission detail', e);
     }
   }
 
