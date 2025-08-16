@@ -6,7 +6,7 @@
 
 import { RemoteClass, RemoteMethod } from '../../internal/remoteDecorators';
 
-@RemoteClass()
+@RemoteClass('LeetCodeApiHandlers')
 export class LeetCodeRemoteHandlers {
   @RemoteMethod()
   async onSubmissionSubmit({ requestContext, responseContext }: any) {
