@@ -57,6 +57,8 @@ export class LeetCodeApiHandlers {
   // Intercept submission endpoint
   @ApiInterceptor(/\/problems\/[^\/]+\/submit\//, { remote: true })
   async onSubmissionSubmit({ requestContext, responseContext }: any) {
+    const questionSlug = requestContext.path.match(/\/problems\/(.*)\/submit/)?.[1] ?? null;
+    return { questionSlug };
   }
 
   // Intercept GraphQL responses, narrow down using a regex for op name if needed

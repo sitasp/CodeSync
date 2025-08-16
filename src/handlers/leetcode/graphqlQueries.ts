@@ -19,16 +19,29 @@ const handleSubmissionDetails: GraphQLHandler = async (requestContext, responseC
   try {
     const requestPayload = JSON.parse(requestContext.payload);
     const requestSubmissionId = requestPayload.variables?.submissionId;
+    console.log('requestSubmissionId', requestSubmissionId);
 
     if (requestSubmissionId) {
-      const storedData = await new Promise<{ latest_submission_id?: number }>((resolve) => {
-        chrome.storage.local.get('latest_submission_id', (data) => resolve(data as any));
+      const storedData = await new Promise<{ latest_submission_id?: number, questionSlug?: string }>((resolve) => {
+        chrome.storage.local.get(['latest_submission_id', 'questionSlug'], (data) => resolve(data as any));
       });
 
       const storedSubmissionId = storedData.latest_submission_id;
+      const questionSlug = storedData.questionSlug;
 
-      if (storedSubmissionId && storedSubmissionId === requestSubmissionId) {
+      if (storedSubmissionId && storedSubmissionId === requestSubmissionId && questionSlug) {
         console.log('✅ [GraphQL] Submission IDs match! Will do syncing logic');
+        const submissionDetails = responseContext.payload;
+        chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+          if (tabs.length > 0 && tabs[0].id) {
+            chrome.tabs.sendMessage(tabs[0].id, {
+              type: 'leetcode-submission',
+              data: { submissionDetails, questionSlug },
+            });
+          }
+        });
+        // Clear the stored data after use
+        chrome.storage.local.remove(['latest_submission_id', 'questionSlug']);
       } else {
         console.warn(`⚠️ [GraphQL] Submission IDs do not match or stored ID not found. requestSubmissionId: ${requestSubmissionId}, storedSubmissionId: ${storedSubmissionId}`);
       }

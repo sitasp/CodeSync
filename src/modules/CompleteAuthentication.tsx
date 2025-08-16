@@ -88,7 +88,7 @@ const SelectRepositoryStep = ({ nextStep }: { nextStep: Function }) => {
     }
 
     setLoading(true);
-    const github = new GithubHandler();
+    const github = new GithubHandler(accessToken, username, repoName, 'LeetCode');
     const isFound = await github.checkIfRepoExists(`${username}/${repoName}`);
     setLoading(false);
     if (!isFound) {

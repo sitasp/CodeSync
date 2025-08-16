@@ -13,13 +13,14 @@ export class LeetCodeRemoteHandlers {
   async onSubmissionSubmit({ requestContext, responseContext }: any) {
     console.log('✅ [Service Worker] remote onSubmissionSubmit handler executed.');
     const submissionId = responseContext.payload?.submission_id;
+    const questionSlug = requestContext.path.match(/\/problems\/(.*)\/submit/)?.[1] ?? null;
 
-    if (submissionId) {
-      chrome.storage.local.set({ latest_submission_id: submissionId }, () => {
-        console.log(`✅ Submission ID ${submissionId} saved to chrome.storage.local.`);
+    if (submissionId && questionSlug) {
+      chrome.storage.local.set({ latest_submission_id: submissionId, questionSlug }, () => {
+        console.log(`✅ Submission ID ${submissionId} and question slug ${questionSlug} saved to chrome.storage.local.`);
       });
     } else {
-      console.error('Could not find submission_id in the response payload.');
+      console.error('Could not find submission_id or questionSlug in the response payload.');
     }
   }
 
@@ -31,7 +32,7 @@ export class LeetCodeRemoteHandlers {
 
       if (graphQLQueryHandlers.has(operationName)) {
         const handler = graphQLQueryHandlers.get(operationName);
-        handler?.(requestContext, responseContext);
+        await handler?.(requestContext, responseContext);
       } else {
         // console.log(`Skipping unhandled GraphQL query: ${operationName}`);
       }
