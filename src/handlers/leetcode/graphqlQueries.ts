@@ -10,12 +10,33 @@ export enum AllowedGraphQLQuery {
 }
 
 // A type definition for our handler functions
-export type GraphQLHandler = (requestContext: any, responseContext: any) => void;
+export type GraphQLHandler = (requestContext: any, responseContext: any) => void | Promise<void>;
 
 // Handler for the 'submissionDetails' query
-const handleSubmissionDetails: GraphQLHandler = (requestContext, responseContext) => {
+const handleSubmissionDetails: GraphQLHandler = async (requestContext, responseContext) => {
   console.log('✅ [GraphQL] Handling submissionDetails query.');
-  console.log('🎯 [GRAPH QL API] Remote Request:', requestContext);
+
+  try {
+    const requestPayload = JSON.parse(requestContext.payload);
+    const requestSubmissionId = requestPayload.variables?.submissionId;
+
+    if (requestSubmissionId) {
+      const storedData = await new Promise<{ latest_submission_id?: number }>((resolve) => {
+        chrome.storage.local.get('latest_submission_id', (data) => resolve(data as any));
+      });
+
+      const storedSubmissionId = storedData.latest_submission_id;
+
+      if (storedSubmissionId && storedSubmissionId === requestSubmissionId) {
+        console.log('✅ [GraphQL] Submission IDs match! Will do syncing logic');
+      } else {
+        console.warn(`⚠️ [GraphQL] Submission IDs do not match or stored ID not found. requestSubmissionId: ${requestSubmissionId}, storedSubmissionId: ${storedSubmissionId}`);
+      }
+    }
+  } catch (e) {
+    console.error('Error processing submissionDetails request:', e);
+  }
+
   console.log('📨 [GRAPH QL API] Remote Response:', responseContext);
 };
 
