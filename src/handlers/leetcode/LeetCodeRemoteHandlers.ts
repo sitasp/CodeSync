@@ -13,6 +13,12 @@ export class LeetCodeRemoteHandlers {
     console.log('✅ [Service Worker] remote onSubmissionSubmit handler executed.');
     console.log('🎯 [SUBMIT API] Remote Request:', requestContext);
     console.log('📨 [SUBMIT API] Remote Response:', responseContext);
-    // TODO: Add actual logic here to save this data or sync it to GitHub.
+  }
+
+  @RemoteMethod()
+  async onGraphQL({ requestContext, responseContext }: any) {
+    console.log('✅ [Service Worker] remote onGraphQL handler executed.');
+    console.log('🎯 [GRAPH QL API] Remote Request:', requestContext);
+    console.log('📨 [GRAPH QL API] Remote Response:', responseContext);
   }
 }

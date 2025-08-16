@@ -60,19 +60,7 @@ export class LeetCodeApiHandlers {
   }
 
   // Intercept GraphQL responses, narrow down using a regex for op name if needed
-  @ApiInterceptor(/graphql/) // broaden or specialize as you like
+  @ApiInterceptor(/graphql/, {remote: true}) // broaden or specialize as you like
   async onGraphQL({ requestContext, responseContext }: any) {
-    console.log('🎯 [GraphQL API] Request:', {
-      url: requestContext.path,
-      method: requestContext.method,
-      headers: requestContext.headers,
-      body: requestContext.payload,
-    });
-
-    console.log('📨 [GraphQL API] Response:', {
-      status: responseContext.statusCode,
-      headers: responseContext.headers,
-      data: responseContext.payload,
-    });
   }
 }
