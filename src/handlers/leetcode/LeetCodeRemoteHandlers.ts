@@ -12,8 +12,15 @@ export class LeetCodeRemoteHandlers {
   @RemoteMethod()
   async onSubmissionSubmit({ requestContext, responseContext }: any) {
     console.log('✅ [Service Worker] remote onSubmissionSubmit handler executed.');
-    console.log('🎯 [SUBMIT API] Remote Request:', requestContext);
-    console.log('📨 [SUBMIT API] Remote Response:', responseContext);
+    const submissionId = responseContext.payload?.submission_id;
+
+    if (submissionId) {
+      chrome.storage.local.set({ latest_submission_id: submissionId }, () => {
+        console.log(`✅ Submission ID ${submissionId} saved to chrome.storage.local.`);
+      });
+    } else {
+      console.error('Could not find submission_id in the response payload.');
+    }
   }
 
   @RemoteMethod()

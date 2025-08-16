@@ -18,8 +18,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (handler) {
       console.log(`[Service Worker] Executing remote handler for ${message.handlerId}`);
       try {
-        handler(message.contexts);
-        sendResponse({ status: 'OK' });
+        const result: any = handler(message.contexts);
+
+        // Check if the result is a promise-like object (i.e., an async handler)
+        if (typeof result === 'object' && result !== null && typeof result.then === 'function') {
+          result.then((resolvedValue: any) => {
+            sendResponse({ status: 'OK', value: resolvedValue });
+          }).catch((error: any) => {
+            console.error(`[Service Worker] Error executing async handler ${message.handlerId}:`, error);
+            sendResponse({ status: 'ERROR', error: error.message });
+          });
+        } else {
+          // Synchronous handler
+          sendResponse({ status: 'OK' });
+        }
       } catch (e) {
         console.error(`[Service Worker] Error executing handler ${message.handlerId}:`, e);
         sendResponse({ status: 'ERROR', error: (e as Error).message });
