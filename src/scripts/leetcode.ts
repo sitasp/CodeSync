@@ -27,11 +27,11 @@ export {}; // Make this a module
     console.log('🔌 Starting HTTP interceptor...');
     http.start();
 
-    console.log('✅ [LeetSync] lcInterceptor initialized successfully');
+    console.log('✅ [CodeSync] lcInterceptor initialized successfully');
     console.log('🔍 Checking if fetch is patched:', typeof window.fetch);
     console.log('🔍 Checking if XMLHttpRequest is patched:', typeof XMLHttpRequest);
   } catch (e) {
-    console.error('❌ [LeetSync] bootstrap error', e);
+    console.error('❌ [CodeSync] bootstrap error', e);
     if (e instanceof Error) {
       console.error('❌ Error stack:', e.stack);
     }

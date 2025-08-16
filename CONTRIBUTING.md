@@ -1,6 +1,6 @@
-# Contributing to LeetSync
+# Contributing to CodeSync
 
-Thank you for considering contributing to LeetSync! Whether you want to report a bug, suggest an improvement, or submit a code change, your contributions are greatly appreciated.
+Thank you for considering contributing to CodeSync! Whether you want to report a bug, suggest an improvement, or submit a code change, your contributions are greatly appreciated.
 
 Before contributing, please take a moment to read through the guidelines in this document.
 
