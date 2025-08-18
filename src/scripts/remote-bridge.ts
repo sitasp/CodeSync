@@ -1,3 +1,5 @@
+import { BridgeMessage, BridgeMessageType } from "../types/bridge";
+
 export {};
 
 // This script runs as a content script on leetcode.com.
@@ -38,3 +40,10 @@ window.addEventListener(
   },
   false,
 );
+
+chrome.runtime.onMessage.addListener((message: BridgeMessage, sender, sendResponse) => {
+    if (message.type === BridgeMessageType.FROM_SERVICE_WORKER) {
+        console.log('[CodeSync Bridge] Received message from service worker:', message);
+        window.postMessage(message, '*');
+    }
+});

@@ -4,8 +4,8 @@
 import { bindDecorators } from '../internal/apiDecorator';
 import { HttpInterceptor } from '../internal/httpInterceptor';
 import { LeetCodeApiHandlers } from '../handlers/leetcode/LeetCodeHandlers';
-import GithubHandler from '../handlers/GithubHandler';
-import { getUserData, setUserData, updateProblemsSolved } from '../lib/userData';
+
+console.log('🚀 [leetcode.ts] Script loaded.'); // Moved log
 
 export {}; // Make this a module
 
@@ -42,6 +42,7 @@ export {}; // Make this a module
 
 // Function to show popup
 async function showPopup(): Promise<string> {
+  console.log('✅ [leetcode.ts] showPopup called.');
   return new Promise((resolve) => {
     // First inject required styles
     const style = document.createElement('style');
@@ -166,42 +167,25 @@ async function showPopup(): Promise<string> {
   });
 }
 
-async function handleSubmission(submission: any, questionSlug: string) {
-  const userData = await getUserData();
-  if (!userData.github_leetsync_token || !userData.github_username || !userData.github_leetsync_repo) {
-    console.log('❌ Missing Github Credentials');
+// Listen for messages from the content script (remote-bridge.ts)
+window.addEventListener('message', async (event) => {
+  // We only accept messages from ourselves
+  if (event.source !== window) {
     return;
   }
 
-  const github = new GithubHandler(
-    userData.github_leetsync_token,
-    userData.github_username,
-    userData.github_leetsync_repo,
-    userData.github_leetsync_subdirectory || ''
-  );
+  const message = event.data;
 
-  const userChoice = await showPopup();
-  let useDefaultSubmit: boolean = false;
-  if (userChoice === 'skip') {
-    return;
-  } else if (userChoice === 'override') {
-    useDefaultSubmit = true;
-  } else if (userChoice === 'createNew') {
-    useDefaultSubmit = false;
-  }
+  if (message && message.type === 'LEETCODE_SUBMISSION' && message.data) {
+    console.log('✅ [leetcode.ts] Received LEETCODE_SUBMISSION from remote-bridge:', message.data);
+    const { submissionDetails, questionSlug } = message.data;
 
-  const result = await github.submit(submission, useDefaultSubmit);
+    const userChoice = await showPopup();
 
-  if (result && typeof result !== 'boolean') {
-    await updateProblemsSolved(result.problemsSolved);
-    await setUserData({ lastSolved: result.lastSolved });
-    chrome.runtime.sendMessage({ type: 'set-fire-icon' });
-  }
-}
-
-chrome.runtime.onMessage.addListener(async function (request, _s, _sendResponse) {
-  if (request && request.type === 'leetcode-submission') {
-    const { submissionDetails, questionSlug } = request.data;
-    await handleSubmission(submissionDetails, questionSlug);
+    // Send the user's choice back to the content script
+    window.postMessage({
+      type: 'POPUP_CHOICE',
+      data: { userChoice, submissionDetails, questionSlug },
+    }, window.location.origin);
   }
 });

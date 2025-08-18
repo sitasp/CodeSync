@@ -18,7 +18,7 @@
   "host_permissions": ["https://leetcode.com/*"],
   "web_accessible_resources": [
     {
-      "resources": ["static/scripts/leetcode.js"],
+      "resources": ["static/scripts/leetcode.js", "static/scripts/main-world-bridge.js"],
       "matches": ["https://leetcode.com/*"]
     }
   ],
@@ -35,7 +35,7 @@
       "matches": [
         "https://leetcode.com/*"
       ],
-      "js": ["static/scripts/remote-bridge.js"],
+      "js": ["static/scripts/remote-bridge.js", "static/scripts/popup-content-script.js", "static/scripts/inject-main-world-bridge.js"],
       "run_at": "document_start"
     }
   ]

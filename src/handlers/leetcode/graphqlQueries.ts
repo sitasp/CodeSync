@@ -32,12 +32,19 @@ const handleSubmissionDetails: GraphQLHandler = async (requestContext, responseC
       if (storedSubmissionId && storedSubmissionId === requestSubmissionId && questionSlug) {
         console.log('✅ [GraphQL] Submission IDs match! Will do syncing logic');
         const submissionDetails = responseContext.payload;
-        chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+        chrome.tabs.query({ active: true, currentWindow: true }, async function (tabs) {
           if (tabs.length > 0 && tabs[0].id) {
-            chrome.tabs.sendMessage(tabs[0].id, {
-              type: 'leetcode-submission',
-              data: { submissionDetails, questionSlug },
-            });
+            try {
+              // Add a small delay to ensure the content script is ready
+              await new Promise(resolve => setTimeout(resolve, 500)); // 500ms delay
+              chrome.tabs.sendMessage(tabs[0].id, {
+                type: 'leetcode-submission',
+                data: { submissionDetails, questionSlug },
+              });
+              console.log('✅ [graphqlQueries.ts] Message leetcode-submission sent to content script.');
+            } catch (error) {
+              console.error('Error sending message to content script:', error);
+            }
           }
         });
         // Clear the stored data after use
